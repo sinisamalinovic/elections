@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "PosmatraciApp\\PosmatraciApp.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "PosmatraciReport\\PosmatraciReport.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

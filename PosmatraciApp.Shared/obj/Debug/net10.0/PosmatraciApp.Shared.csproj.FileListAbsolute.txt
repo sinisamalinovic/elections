@@ -1,0 +1,12 @@
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\bin\Debug\net10.0\PosmatraciApp.Shared.deps.json
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\bin\Debug\net10.0\PosmatraciApp.Shared.dll
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\bin\Debug\net10.0\PosmatraciApp.Shared.pdb
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\obj\Debug\net10.0\PosmatraciApp.Shared.GeneratedMSBuildEditorConfig.editorconfig
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\obj\Debug\net10.0\PosmatraciApp.Shared.AssemblyInfoInputs.cache
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\obj\Debug\net10.0\PosmatraciApp.Shared.AssemblyInfo.cs
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\obj\Debug\net10.0\PosmatraciApp.Shared.csproj.CoreCompileInputs.cache
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\obj\Debug\net10.0\PosmatraciApp.Shared.sourcelink.json
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\obj\Debug\net10.0\PosmatraciApp.Shared.dll
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\obj\Debug\net10.0\refint\PosmatraciApp.Shared.dll
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\obj\Debug\net10.0\PosmatraciApp.Shared.pdb
+C:\MyDocuments\posmatraci\posmatraci app\PosmatraciApp.Shared\obj\Debug\net10.0\ref\PosmatraciApp.Shared.dll
