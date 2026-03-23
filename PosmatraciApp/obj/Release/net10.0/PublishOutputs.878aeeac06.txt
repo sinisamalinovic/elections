@@ -1,4 +1,0 @@
-C:\MyDocuments\posmatraci\posmatraci app\publish\wwwroot\index.html
-C:\MyDocuments\posmatraci\posmatraci app\publish\PosmatraciApp.runtimeconfig.json
-C:\MyDocuments\posmatraci\posmatraci app\publish\dotnet.js
-C:\MyDocuments\posmatraci\posmatraci app\publish\web.config

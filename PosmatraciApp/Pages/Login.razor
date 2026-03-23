@@ -1,0 +1,84 @@
+@page "/login"
+@inject AuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Пријава - Посматрач</PageTitle>
+
+<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;padding:16px;">
+    <MudCard Style="width:100%;max-width:420px;">
+        <MudCardContent>
+            <div style="text-align:center;margin-bottom:24px;">
+                <MudIcon Icon="@Icons.Material.Filled.HowToVote" Color="Color.Primary" Style="font-size:3rem;" />
+                <MudText Typo="Typo.h5" Style="margin-top:8px;font-weight:600;">Посматрач изборa</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Чек-листа за биrачко место</MudText>
+            </div>
+
+            <MudTextField @bind-Value="_email"
+                          Label="Ваш e-mail"
+                          InputType="InputType.Email"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Email"
+                          FullWidth="true"
+                          Disabled="_loading"
+                          Error="@(!string.IsNullOrEmpty(_errorMsg))"
+                          ErrorText="@_errorMsg"
+                          OnKeyUp="OnKeyUp"
+                          Style="margin-bottom:16px;" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="_loading || string.IsNullOrWhiteSpace(_email)"
+                       OnClick="DoLogin">
+                @if (_loading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                }
+                else
+                {
+                    <span>Пријавите се</span>
+                }
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+</div>
+
+@code {
+    private string _email = "";
+    private string _errorMsg = "";
+    private bool _loading;
+
+    protected override void OnInitialized()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            var session = AuthService.CurrentSession!;
+            if (session.ActiveBmIds.Count > 0)
+                Nav.NavigateTo($"/checklist/{session.CurrentBmId ?? session.ActiveBmIds[0]}");
+            else
+                Nav.NavigateTo("/location-select");
+        }
+    }
+
+    private async Task DoLogin()
+    {
+        if (string.IsNullOrWhiteSpace(_email)) return;
+        _loading = true;
+        _errorMsg = "";
+
+        var success = await AuthService.LoginAsync(_email.Trim());
+        _loading = false;
+
+        if (success)
+            Nav.NavigateTo("/location-select");
+        else
+            _errorMsg = "Овај e-mail није регистрован. Проверите адресу или контактирајте координатора.";
+    }
+
+    private async Task OnKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await DoLogin();
+    }
+}

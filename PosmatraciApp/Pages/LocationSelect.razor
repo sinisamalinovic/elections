@@ -1,0 +1,142 @@
+@page "/location-select"
+@inject AuthService AuthService
+@inject LocationService LocationService
+@inject ChecklistService ChecklistService
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Изабери биrачко место</PageTitle>
+
+<MudAppBar Elevation="1" Color="Color.Primary" Fixed="true">
+    @if (AuthService.CurrentSession?.ActiveBmIds.Count > 0)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit"
+                       OnClick="GoBack" />
+    }
+    <MudText Typo="Typo.h6">Одабери биrачко место</MudText>
+    <MudSpacer />
+    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
+                   OnClick="Logout" Title="Одјава" />
+</MudAppBar>
+
+<div style="padding:72px 16px 16px;">
+
+    @if (AuthService.CurrentSession?.ActiveBmIds.Count > 0)
+    {
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Style="margin-bottom:12px;">
+            Тренутно посматрате:
+        </MudText>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+            @foreach (var bmId in AuthService.CurrentSession.ActiveBmIds)
+            {
+                var bm = LocationService.FindBm(bmId);
+                if (bm != null)
+                {
+                    <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined"
+                             Icon="@Icons.Material.Filled.Place"
+                             OnClick="@(() => GoToChecklist(bmId))">
+                        @bm.ShortId. @bm.Name
+                    </MudChip>
+                }
+            }
+        </div>
+        <MudDivider Style="margin-bottom:20px;" />
+    }
+
+    <MudText Typo="Typo.h6" Style="margin-bottom:16px;">Додај ново биrачко место</MudText>
+
+    <MudSelect T="Opstina" Label="Општина" Variant="Variant.Outlined"
+               @bind-Value="_selectedOpstina"
+               ToStringFunc="@(o => o?.Name ?? "")"
+               FullWidth="true" Style="margin-bottom:16px;"
+               Disabled="LocationService.Opstine.Count == 0">
+        @foreach (var o in LocationService.Opstine)
+        {
+            <MudSelectItem T="Opstina" Value="@o">@o.Name</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudSelect T="BirackaJedinica" Label="Биrачка јединица" Variant="Variant.Outlined"
+               @bind-Value="_selectedBj"
+               ToStringFunc="@(bj => bj?.Name ?? "")"
+               FullWidth="true" Style="margin-bottom:16px;"
+               Disabled="_selectedOpstina == null">
+        @if (_selectedOpstina != null)
+        {
+            @foreach (var bj in _selectedOpstina.BiracskeJedinice)
+            {
+                <MudSelectItem T="BirackaJedinica" Value="@bj">@bj.Name</MudSelectItem>
+            }
+        }
+    </MudSelect>
+
+    <MudSelect T="BirackoMesto" Label="Биrачко место" Variant="Variant.Outlined"
+               @bind-Value="_selectedBm"
+               ToStringFunc="@(bm => bm == null ? "" : $"{bm.ShortId}. {bm.Name} — {bm.Address}")"
+               FullWidth="true" Style="margin-bottom:24px;"
+               Disabled="_selectedBj == null">
+        @if (_selectedBj != null)
+        {
+            @foreach (var bm in _selectedBj.BiracaMesta)
+            {
+                <MudSelectItem T="BirackoMesto" Value="@bm">@bm.ShortId. @bm.Name — @bm.Address</MudSelectItem>
+            }
+        }
+    </MudSelect>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+               Size="Size.Large" Disabled="_selectedBm == null"
+               StartIcon="@Icons.Material.Filled.AddLocation"
+               OnClick="AddBm">
+        Иди на чек-листу
+    </MudButton>
+</div>
+
+@code {
+    private Opstina? _selectedOpstina;
+    private BirackaJedinica? _selectedBj;
+    private BirackoMesto? _selectedBm;
+
+    protected override void OnInitialized()
+    {
+        if (!AuthService.IsAuthenticated)
+            Nav.NavigateTo("/login");
+    }
+
+    private async Task AddBm()
+    {
+        if (_selectedBm == null || _selectedOpstina == null || _selectedBj == null) return;
+
+        var session = AuthService.CurrentSession!;
+        if (!session.ActiveBmIds.Contains(_selectedBm.Id))
+        {
+            session.ActiveBmIds.Add(_selectedBm.Id);
+        }
+        session.CurrentBmId = _selectedBm.Id;
+        await AuthService.SaveSessionAsync();
+
+        var state = ChecklistService.GetOrCreateBmState(_selectedBm, _selectedOpstina.Name, _selectedBj.Name);
+        await ChecklistService.SaveAllAsync();
+
+        Nav.NavigateTo($"/checklist/{_selectedBm.Id}");
+    }
+
+    private void GoToChecklist(string bmId)
+    {
+        AuthService.CurrentSession!.CurrentBmId = bmId;
+        Nav.NavigateTo($"/checklist/{bmId}");
+    }
+
+    private void GoBack()
+    {
+        var bmId = AuthService.CurrentSession?.CurrentBmId ?? AuthService.CurrentSession?.ActiveBmIds[0];
+        if (bmId != null)
+            Nav.NavigateTo($"/checklist/{bmId}");
+    }
+
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        Nav.NavigateTo("/login");
+    }
+}

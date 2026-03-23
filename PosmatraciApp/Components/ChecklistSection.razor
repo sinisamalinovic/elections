@@ -1,0 +1,71 @@
+@using PosmatraciApp.Models
+
+<MudExpansionPanel>
+    <TitleContent>
+        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+            <div style="flex:1;">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">@Section.Title</MudText>
+                @if (!string.IsNullOrEmpty(Section.TimeRange))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@Section.TimeRange</MudText>
+                }
+            </div>
+            <MudChip T="string" Size="Size.Small"
+                     Color="@GetProgressColor()"
+                     Variant="Variant.Filled"
+                     Style="min-width:52px;">
+                @AnsweredCount/@Section.Items.Count
+            </MudChip>
+        </div>
+    </TitleContent>
+    <ChildContent>
+        <div style="padding-bottom:8px;">
+            @foreach (var item in Section.Items)
+            {
+                <ChecklistItem Item="@item"
+                               Answer="@GetAnswer(item.Id)"
+                               CurrentSeverity="@GetSeverity(item.Id)"
+                               Note="@GetNote(item.Id)"
+                               OnAnswerChanged="@((a) => AnswerChanged(item.Id, a))"
+                               OnSeverityChanged="@((s) => SeverityChanged(item.Id, s))"
+                               OnNoteChanged="@((n) => NoteChanged(item.Id, n))" />
+            }
+        </div>
+    </ChildContent>
+</MudExpansionPanel>
+
+@code {
+    [Parameter] public ChecklistSectionDefinition Section { get; set; } = null!;
+    [Parameter] public BmState State { get; set; } = null!;
+    [Parameter] public EventCallback<(int id, AnswerState answer)> OnAnswerChanged { get; set; }
+    [Parameter] public EventCallback<(int id, CheckSeverity severity)> OnSeverityChanged { get; set; }
+    [Parameter] public EventCallback<(int id, string note)> OnNoteChanged { get; set; }
+
+    private int AnsweredCount => Section.Items.Count(item =>
+        State != null && item.Id < State.Answers.Length && State.Answers[item.Id] != AnswerState.Unanswered);
+
+    private AnswerState GetAnswer(int id) =>
+        State != null && id < State.Answers.Length ? State.Answers[id] : AnswerState.Unanswered;
+
+    private CheckSeverity GetSeverity(int id) =>
+        State != null && id < State.Severities.Length ? State.Severities[id] : CheckSeverity.None;
+
+    private string GetNote(int id) =>
+        State?.Notes.TryGetValue(id, out var note) == true ? note : "";
+
+    private async Task AnswerChanged(int id, AnswerState answer) =>
+        await OnAnswerChanged.InvokeAsync((id, answer));
+
+    private async Task SeverityChanged(int id, CheckSeverity severity) =>
+        await OnSeverityChanged.InvokeAsync((id, severity));
+
+    private async Task NoteChanged(int id, string note) =>
+        await OnNoteChanged.InvokeAsync((id, note));
+
+    private Color GetProgressColor()
+    {
+        if (AnsweredCount == 0) return Color.Default;
+        if (AnsweredCount == Section.Items.Count) return Color.Success;
+        return Color.Warning;
+    }
+}

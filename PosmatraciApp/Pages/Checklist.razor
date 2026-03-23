@@ -1,0 +1,282 @@
+@page "/checklist/{BmId}"
+@inject AuthService AuthService
+@inject ChecklistService ChecklistService
+@inject LocationService LocationService
+@inject QrEncoderService QrEncoder
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Чек-листа — @(_state?.BmDisplayName ?? "")</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <MudText>Нисте пријављени.</MudText>
+    return;
+}
+
+@if (_state == null)
+{
+    <div style="display:flex;justify-content:center;padding:32px;">
+        <MudProgressCircular Indeterminate="true" />
+    </div>
+    return;
+}
+
+<!-- Top AppBar -->
+<MudAppBar Elevation="1" Color="Color.Primary" Fixed="true" Dense="true">
+    <MudText Typo="Typo.subtitle1" Style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">
+        @_state.BmDisplayName
+    </MudText>
+    <MudSpacer />
+    <MudChip T="string" Color="@GetOverallProgressColor()" Variant="Variant.Filled" Size="Size.Small"
+             Style="margin-right:4px;">
+        @_state.AnsweredCount/@_state.TotalItems
+    </MudChip>
+    <MudIconButton Icon="@Icons.Material.Filled.AddLocation" Color="Color.Inherit"
+                   OnClick="AddBm" Title="Додај БМ" />
+    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
+                   OnClick="Logout" Title="Одјава" />
+</MudAppBar>
+
+<!-- BM Switcher -->
+@if (AuthService.CurrentSession!.ActiveBmIds.Count > 1)
+{
+    <div style="position:fixed;top:48px;left:0;right:0;z-index:900;background:white;border-bottom:1px solid #eee;overflow-x:auto;white-space:nowrap;padding:6px 8px;">
+        @foreach (var bmId in AuthService.CurrentSession.ActiveBmIds)
+        {
+            var bm = LocationService.FindBm(bmId);
+            var isCurrent = bmId == BmId;
+            <MudChip T="string"
+                     Color="@(isCurrent ? Color.Primary : Color.Default)"
+                     Variant="@(isCurrent ? Variant.Filled : Variant.Outlined)"
+                     Size="Size.Small"
+                     Style="margin-right:4px;"
+                     OnClick="@(() => SwitchBm(bmId))">
+                @(bm?.Name ?? bmId)
+            </MudChip>
+        }
+    </div>
+}
+
+<!-- Content -->
+<div style="padding-top:@(AuthService.CurrentSession.ActiveBmIds.Count > 1 ? "92px" : "56px");padding-bottom:80px;">
+
+    <!-- BM Info -->
+    <div style="padding:12px 16px 0;">
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @_state.OpstineName › @_state.BjName
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Сачувано: @_state.LastModified.ToLocalTime().ToString("HH:mm")
+        </MudText>
+    </div>
+
+    <!-- Checklist Sections -->
+    <MudExpansionPanels MultiExpansion="false" Style="padding:8px;">
+        @foreach (var sect in ChecklistService.Sections)
+        {
+            <ChecklistSection Section="@sect"
+                              State="@_state"
+                              OnAnswerChanged="@((t) => OnAnswerChanged(t.id, t.answer))"
+                              OnSeverityChanged="@((t) => OnSeverityChanged(t.id, t.severity))"
+                              OnNoteChanged="@((t) => OnNoteChanged(t.id, t.note))" />
+        }
+    </MudExpansionPanels>
+</div>
+
+<!-- Sticky Bottom Bar -->
+<div style="position:fixed;bottom:0;left:0;right:0;padding:12px 16px;background:white;border-top:1px solid #eee;z-index:900;">
+    <button class="send-btn" @onclick="SendQr" disabled="@_sending">
+        @if (_sending)
+        {
+            <span>⏳</span><span>Генерисање…</span>
+        }
+        else
+        {
+            <span>📤</span><span>Пошаљи извештај</span>
+        }
+    </button>
+</div>
+
+<!-- QR Dialog -->
+<MudDialog Visible="_qrDialogOpen" VisibleChanged="@((v) => _qrDialogOpen = v)" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">QR Код — @_state.BmDisplayName</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_validationWarnings.Count > 0)
+        {
+            <MudAlert Severity="MudBlazor.Severity.Warning" Style="margin-bottom:12px;">
+                <MudText Typo="Typo.subtitle2">Недостају напомене за:</MudText>
+                <ul style="margin:4px 0 0 16px;">
+                    @foreach (var w in _validationWarnings)
+                    {
+                        <li><MudText Typo="Typo.caption">@w</MudText></li>
+                    }
+                </ul>
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrEmpty(_qrBase64))
+        {
+            <div style="text-align:center;padding:8px 0;">
+                <img src="data:image/png;base64,@_qrBase64"
+                     style="max-width:100%;border:1px solid #eee;" alt="QR код" />
+            </div>
+
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="text-align:center;display:block;margin-bottom:4px;">
+                @_state.BmDisplayName — @DateTime.Now.ToString("dd.MM.yyyy HH:mm")
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="text-align:center;display:block;">
+                Одговорено: @_state.AnsweredCount/@_state.TotalItems | Не: @_state.NeCount
+            </MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _qrDialogOpen = false)">Затвори</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Download"
+                   OnClick="DownloadQr">Преузми</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Share"
+                   OnClick="ShareQr">Подели</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string BmId { get; set; } = "";
+
+    private BmState? _state;
+    private bool _qrDialogOpen;
+    private string _qrBase64 = "";
+    private List<string> _validationWarnings = new();
+    private bool _sending;
+
+    protected override void OnParametersSet()
+    {
+        LoadState();
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!AuthService.IsAuthenticated)
+            Nav.NavigateTo("/login");
+    }
+
+    private void LoadState()
+    {
+        _state = ChecklistService.GetBmState(BmId);
+        if (_state == null)
+        {
+            var bm = LocationService.FindBm(BmId);
+            if (bm == null)
+            {
+                Nav.NavigateTo("/location-select");
+                return;
+            }
+            var ctx = LocationService.GetBmContext(BmId);
+            _state = ChecklistService.GetOrCreateBmState(bm, ctx.opstinaName, ctx.bjName);
+        }
+    }
+
+    private void OnAnswerChanged(int id, AnswerState answer)
+    {
+        ChecklistService.SetAnswer(BmId, id, answer);
+        StateHasChanged();
+    }
+
+    private void OnSeverityChanged(int id, CheckSeverity severity)
+    {
+        ChecklistService.SetSeverity(BmId, id, severity);
+    }
+
+    private void OnNoteChanged(int id, string note)
+    {
+        ChecklistService.SetNote(BmId, id, note);
+    }
+
+    private void SwitchBm(string bmId)
+    {
+        AuthService.CurrentSession!.CurrentBmId = bmId;
+        Nav.NavigateTo($"/checklist/{bmId}");
+    }
+
+    private void AddBm()
+    {
+        Nav.NavigateTo("/location-select");
+    }
+
+    private async Task Logout()
+    {
+        await ChecklistService.SaveAllAsync();
+        await AuthService.LogoutAsync();
+        Nav.NavigateTo("/login");
+    }
+
+    /// <summary>
+    /// Generates QR and immediately opens the native phone share sheet (Viber, WhatsApp, etc.).
+    /// Falls back to the QR dialog if Web Share API is unavailable.
+    /// </summary>
+    private async Task SendQr()
+    {
+        if (_state == null || _sending) return;
+        _sending = true;
+        StateHasChanged();
+
+        BuildValidationWarnings();
+
+        var payload = QrEncoder.EncodeToBase64Url(_state, AuthService.CurrentSession!.EmailHash);
+        _qrBase64 = QrEncoder.GenerateQrPngBase64(payload);
+        await ChecklistService.SaveAllAsync();
+
+        // Try native share sheet first (Viber, WhatsApp, Telegram, email, etc.)
+        var shared = await JS.InvokeAsync<bool>("shareQrCode", _qrBase64, _state.BmDisplayName);
+
+        _sending = false;
+
+        if (!shared)
+        {
+            // Web Share not supported on this device/browser — show QR dialog instead
+            _qrDialogOpen = true;
+        }
+
+        StateHasChanged();
+    }
+
+    private void BuildValidationWarnings()
+    {
+        _validationWarnings = new List<string>();
+        foreach (var sect in ChecklistService.Sections)
+            foreach (var item in sect.Items)
+                if (item.NoteRequired
+                    && item.Id < _state!.Answers.Length
+                    && _state.Answers[item.Id] == AnswerState.Ne
+                    && (!_state.Notes.TryGetValue(item.Id, out var n) || string.IsNullOrWhiteSpace(n)))
+                    _validationWarnings.Add(item.Text.Length > 60 ? item.Text[..60] + "…" : item.Text);
+    }
+
+    private async Task ShareQr()
+    {
+        if (string.IsNullOrEmpty(_qrBase64)) return;
+        var shared = await JS.InvokeAsync<bool>("shareQrCode", _qrBase64, _state!.BmDisplayName);
+        if (!shared)
+            Snackbar.Add("Дељење није подржано на овом уређају. Преузмите слику.", MudBlazor.Severity.Info);
+    }
+
+    private async Task DownloadQr()
+    {
+        if (string.IsNullOrEmpty(_qrBase64)) return;
+        var filename = $"qr-{_state!.BmShortId}-{DateTime.Now:yyyyMMdd-HHmm}.png";
+        await JS.InvokeVoidAsync("downloadQrCode", _qrBase64, filename);
+    }
+
+    private Color GetOverallProgressColor()
+    {
+        if (_state == null) return Color.Default;
+        if (_state.AnsweredCount == 0) return Color.Default;
+        if (_state.AnsweredCount == _state.TotalItems) return Color.Success;
+        return Color.Warning;
+    }
+}

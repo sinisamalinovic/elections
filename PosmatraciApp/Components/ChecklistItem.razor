@@ -1,0 +1,98 @@
+@using PosmatraciApp.Models
+
+<div class="checklist-item @GetStateClass()">
+
+    <div class="item-text">
+        <MudText Typo="Typo.body2">@Item.Text</MudText>
+    </div>
+
+    <!-- Da / Ne + Risk level row -->
+    <div class="item-row">
+        <!-- Da / Ne toggles -->
+        <div class="item-answer-btns">
+            <button class="answer-btn @(Answer == AnswerState.Da ? "btn-da-active" : "btn-da")"
+                    @onclick="@(() => ToggleAnswer(AnswerState.Da))">
+                ✓ Да
+            </button>
+            <button class="answer-btn @(Answer == AnswerState.Ne ? "btn-ne-active" : "btn-ne")"
+                    @onclick="@(() => ToggleAnswer(AnswerState.Ne))">
+                ✗ Не
+            </button>
+        </div>
+
+        <!-- Risk level checkboxes: N S V K -->
+        <div class="item-risk-btns">
+            @foreach (var (sev, label) in RiskOptions)
+            {
+                <button class="risk-btn risk-@sev.ToString().ToLower() @(CurrentSeverity == sev ? "risk-active-" + sev.ToString().ToLower() : "")"
+                        @onclick="@(() => SetSeverity(sev))">
+                    @label
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Note field: always shown when Ne, or when a note already exists -->
+    @if (Answer == AnswerState.Ne || !string.IsNullOrWhiteSpace(_noteText))
+    {
+        <textarea class="item-note @(Item.NoteRequired && Answer == AnswerState.Ne && string.IsNullOrWhiteSpace(_noteText) ? "item-note-required" : "")"
+                  placeholder="@(Item.NoteRequired ? "Напомена (обавезно)…" : "Напомена…")"
+                  rows="2"
+                  @bind="_noteText"
+                  @bind:event="oninput"
+                  @onchange="SaveNote"></textarea>
+    }
+
+</div>
+
+<hr class="item-divider" />
+
+@code {
+    [Parameter] public ChecklistItemDefinition Item { get; set; } = null!;
+    [Parameter] public AnswerState Answer { get; set; }
+    [Parameter] public CheckSeverity CurrentSeverity { get; set; }
+    [Parameter] public string Note { get; set; } = "";
+    [Parameter] public EventCallback<AnswerState> OnAnswerChanged { get; set; }
+    [Parameter] public EventCallback<CheckSeverity> OnSeverityChanged { get; set; }
+    [Parameter] public EventCallback<string> OnNoteChanged { get; set; }
+
+    private string _noteText = "";
+
+    private static readonly (CheckSeverity sev, string label)[] RiskOptions =
+    {
+        (CheckSeverity.N, "Низак"),
+        (CheckSeverity.S, "Средњи"),
+        (CheckSeverity.V, "Висок"),
+        (CheckSeverity.K, "Критичан"),
+    };
+
+    protected override void OnParametersSet()
+    {
+        _noteText = Note;
+    }
+
+    private async Task ToggleAnswer(AnswerState clicked)
+    {
+        var newAnswer = Answer == clicked ? AnswerState.Unanswered : clicked;
+        await OnAnswerChanged.InvokeAsync(newAnswer);
+    }
+
+    private async Task SetSeverity(CheckSeverity sev)
+    {
+        var newSev = CurrentSeverity == sev ? CheckSeverity.None : sev;
+        await OnSeverityChanged.InvokeAsync(newSev);
+    }
+
+    private async Task SaveNote(ChangeEventArgs e)
+    {
+        _noteText = e.Value?.ToString() ?? "";
+        await OnNoteChanged.InvokeAsync(_noteText);
+    }
+
+    private string GetStateClass() => Answer switch
+    {
+        AnswerState.Da => "item-da",
+        AnswerState.Ne => "item-ne",
+        _ => "item-unanswered"
+    };
+}

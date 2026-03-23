@@ -1,0 +1,63 @@
+@inject AuthService AuthService
+@inject LocationService LocationService
+@inject ChecklistService ChecklistService
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+@if (!_initialized)
+{
+    <MudThemeProvider />
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;">
+        <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.body1">Учитавање података...</MudText>
+    </div>
+}
+else
+{
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <MainLayout>
+                <MudText>Страница није пронађена.</MudText>
+            </MainLayout>
+        </NotFound>
+    </Router>
+}
+
+@code {
+    private bool _initialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(
+            AuthService.InitializeAsync(),
+            LocationService.InitializeAsync(Http),
+            ChecklistService.InitializeAsync(Http)
+        );
+
+        if (AuthService.IsAuthenticated && AuthService.CurrentSession!.ActiveBmIds.Count > 0)
+        {
+            await ChecklistService.LoadBmStatesAsync(AuthService.CurrentSession.ActiveBmIds);
+        }
+
+        _initialized = true;
+        StateHasChanged();
+
+        if (!AuthService.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+        }
+        else if (AuthService.CurrentSession!.ActiveBmIds.Count == 0)
+        {
+            Nav.NavigateTo("/location-select");
+        }
+        else
+        {
+            var currentBm = AuthService.CurrentSession.CurrentBmId ?? AuthService.CurrentSession.ActiveBmIds[0];
+            Nav.NavigateTo($"/checklist/{currentBm}");
+        }
+    }
+}

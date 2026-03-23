@@ -1,0 +1,33 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Published output (root level from old publish)
+_content/
+_framework/
+css/
+lib/
+*.br
+*.gz
+*.js.map
+404.html
+index.html
+manifest.webmanifest
+service-worker.js
+service-worker-assets.js
+app.js
+PosmatraciApp.styles.css
+publish/
+
+# Data files that are duplicated at root (canonical copy is in PosmatraciApp/wwwroot/data/)
+sample-data/
+
+# Docs
+check list.docx
