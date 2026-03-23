@@ -1,0 +1,91 @@
+@page "/izlaznost-istorija/{BmId}"
+@inject AuthService AuthService
+@inject IzlaznostService IzlaznostService
+@inject NavigationManager Nav
+
+<PageTitle>Хронологија излазности</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <MudText>Нисте пријављени.</MudText>
+    return;
+}
+
+<MudAppBar Elevation="1" Color="Color.Primary" Fixed="true" Dense="true">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit"
+                   OnClick="@(() => Nav.NavigateTo($"/izlaznost/{BmId}"))" />
+    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+        Хронологија излазности
+    </MudText>
+</MudAppBar>
+
+<div style="padding:72px 16px 16px;">
+
+    @if (_data == null || _data.Unosi.Count == 0)
+    {
+        <MudText Color="Color.Secondary" Style="text-align:center;margin-top:48px;">
+            Нема уноса излазности за ово биrачко место.
+        </MudText>
+    }
+    else
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-bottom:16px;display:block;">
+            БМ @_data.BmShortId — @_data.BmDisplayName
+            @if (_data.UkupnoBiraca is > 0)
+            {
+                <span> | Укупно: @_data.UkupnoBiraca бирача</span>
+            }
+        </MudText>
+
+        <MudTimeline TimelineOrientation="TimelineOrientation.Vertical"
+                     TimelinePosition="TimelinePosition.Start">
+            @foreach (var unos in Enumerable.Reverse(_data.Unosi).Select((u, i) => (u, i)))
+            {
+                var isLatest = unos.i == 0;
+                <MudTimelineItem Color="@(isLatest ? Color.Primary : Color.Default)"
+                                 Variant="@(isLatest ? Variant.Filled : Variant.Outlined)"
+                                 Size="Size.Small">
+                    <ItemContent>
+                        <MudPaper Elevation="@(isLatest ? 2 : 0)"
+                                  Style="@($"padding:12px 16px;margin-bottom:4px;{(isLatest ? "" : "background:transparent;")}")">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <MudText Typo="Typo.h6" Style="font-weight:700;">
+                                    @unos.u.BrojGlasaca
+                                    @if (_data.UkupnoBiraca is > 0)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-left:6px;">
+                                            (@_data.PostotakIzlaznosti(unos.u.BrojGlasaca)%)
+                                        </MudText>
+                                    }
+                                </MudText>
+                                @if (isLatest)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">најновије</MudChip>
+                                }
+                            </div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @unos.u.Timestamp.ToLocalTime().ToString("HH:mm — dd.MM.yyyy")
+                            </MudText>
+                        </MudPaper>
+                    </ItemContent>
+                </MudTimelineItem>
+            }
+        </MudTimeline>
+    }
+</div>
+
+@code {
+    [Parameter] public string BmId { get; set; } = "";
+
+    private BmIzlaznost? _data;
+
+    protected override void OnInitialized()
+    {
+        if (!AuthService.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        _data = IzlaznostService.Get(BmId);
+    }
+}

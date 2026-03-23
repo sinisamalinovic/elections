@@ -15,6 +15,7 @@ builder.Services.AddScoped<StorageService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<LocationService>();
 builder.Services.AddScoped<ChecklistService>();
+builder.Services.AddScoped<IzlaznostService>();
 builder.Services.AddScoped<QrEncoderService>();
 
 await builder.Build().RunAsync();

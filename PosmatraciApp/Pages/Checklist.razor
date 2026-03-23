@@ -2,6 +2,7 @@
 @inject AuthService AuthService
 @inject ChecklistService ChecklistService
 @inject LocationService LocationService
+@inject IzlaznostService IzlaznostService
 @inject QrEncoderService QrEncoder
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -34,6 +35,8 @@
              Style="margin-right:4px;">
         @_state.AnsweredCount/@_state.TotalItems
     </MudChip>
+    <MudIconButton Icon="@Icons.Material.Filled.HowToVote" Color="Color.Inherit"
+                   OnClick="@(() => Nav.NavigateTo($"/izlaznost/{BmId}"))" Title="Излазност" />
     <MudIconButton Icon="@Icons.Material.Filled.AddLocation" Color="Color.Inherit"
                    OnClick="AddBm" Title="Додај БМ" />
     <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"

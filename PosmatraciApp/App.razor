@@ -1,6 +1,7 @@
 @inject AuthService AuthService
 @inject LocationService LocationService
 @inject ChecklistService ChecklistService
+@inject IzlaznostService IzlaznostService
 @inject HttpClient Http
 @inject NavigationManager Nav
 
@@ -40,7 +41,10 @@ else
 
         if (AuthService.IsAuthenticated && AuthService.CurrentSession!.ActiveBmIds.Count > 0)
         {
-            await ChecklistService.LoadBmStatesAsync(AuthService.CurrentSession.ActiveBmIds);
+            await Task.WhenAll(
+                ChecklistService.LoadBmStatesAsync(AuthService.CurrentSession.ActiveBmIds),
+                IzlaznostService.LoadAsync(AuthService.CurrentSession.ActiveBmIds)
+            );
         }
 
         _initialized = true;

@@ -1,0 +1,169 @@
+@page "/izlaznost/{BmId}"
+@inject AuthService AuthService
+@inject LocationService LocationService
+@inject IzlaznostService IzlaznostService
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Излазност — @(_data?.BmDisplayName ?? "")</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <MudText>Нисте пријављени.</MudText>
+    return;
+}
+
+@if (_data == null)
+{
+    <div style="display:flex;justify-content:center;padding:32px;">
+        <MudProgressCircular Indeterminate="true" />
+    </div>
+    return;
+}
+
+<MudAppBar Elevation="1" Color="Color.Primary" Fixed="true" Dense="true">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit"
+                   OnClick="@(() => Nav.NavigateTo($"/checklist/{BmId}"))" />
+    <MudText Typo="Typo.subtitle1" Style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">
+        @_data.BmDisplayName
+    </MudText>
+    <MudSpacer />
+    <MudIconButton Icon="@Icons.Material.Filled.History" Color="Color.Inherit"
+                   OnClick="@(() => Nav.NavigateTo($"/izlaznost-istorija/{BmId}"))"
+                   Title="Хронологија" />
+</MudAppBar>
+
+<div style="padding:72px 16px 16px;">
+
+    <MudText Typo="Typo.h6" Style="margin-bottom:4px;">Излазност бирача</MudText>
+    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-bottom:24px;display:block;">
+        БМ @_data.BmShortId — @_data.BmDisplayName
+    </MudText>
+
+    <!-- Ukupno birača po spisku -->
+    <MudPaper Elevation="1" Style="padding:16px;margin-bottom:20px;">
+        <MudText Typo="Typo.subtitle2" Style="margin-bottom:12px;">
+            Укупно бирача по бирачком списку
+        </MudText>
+        <div style="display:flex;gap:12px;align-items:flex-end;">
+            <MudNumericField T="int?" @bind-Value="_ukupnoInput"
+                             Label="Број бирача"
+                             Variant="Variant.Outlined"
+                             Min="0"
+                             Style="flex:1;"
+                             Placeholder="@(_data.UkupnoBiraca?.ToString() ?? "нпр. 842")" />
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary"
+                       OnClick="SaveUkupno"
+                       Disabled="_ukupnoInput is null or <= 0"
+                       Style="margin-bottom:3px;">
+                Сачувај
+            </MudButton>
+        </div>
+        @if (_data.UkupnoBiraca is > 0)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Success" Style="margin-top:6px;display:block;">
+                ✓ Уписано: @_data.UkupnoBiraca бирача
+            </MudText>
+        }
+    </MudPaper>
+
+    <!-- Unos izlaznosti -->
+    <MudPaper Elevation="1" Style="padding:16px;margin-bottom:20px;">
+        <MudText Typo="Typo.subtitle2" Style="margin-bottom:4px;">
+            Пријави излазност
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-bottom:12px;display:block;">
+            @DateTime.Now.ToString("HH:mm, dd.MM.yyyy")
+        </MudText>
+
+        <MudNumericField T="int?" @bind-Value="_izlaznostInput"
+                         Label="Број гласача који су гласали"
+                         Variant="Variant.Outlined"
+                         Min="0"
+                         FullWidth="true"
+                         Style="margin-bottom:12px;"
+                         Placeholder="нпр. 215" />
+
+        @if (_izlaznostInput is > 0 && _data.UkupnoBiraca is > 0)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-bottom:12px;display:block;">
+                ≈ @_data.PostotakIzlaznosti(_izlaznostInput.Value)% излазност
+            </MudText>
+        }
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                   Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.Send"
+                   Disabled="_izlaznostInput is null or <= 0"
+                   OnClick="SendIzlaznost">
+            Пошаљи излазност
+        </MudButton>
+    </MudPaper>
+
+    <!-- Poslednji unos -->
+    @if (_data.Unosi.Count > 0)
+    {
+        var last = _data.Unosi[^1];
+        <MudAlert Severity="MudBlazor.Severity.Info" Style="margin-bottom:16px;">
+            <MudText Typo="Typo.subtitle2">Последња пријављена излазност:</MudText>
+            <MudText Typo="Typo.body2">
+                @last.BrojGlasaca гласача
+                @if (_data.UkupnoBiraca is > 0)
+                {
+                    <span> (@_data.PostotakIzlaznosti(last.BrojGlasaca)%)</span>
+                }
+                — @last.Timestamp.ToLocalTime().ToString("HH:mm, dd.MM.yyyy")
+            </MudText>
+        </MudAlert>
+
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                   StartIcon="@Icons.Material.Filled.History"
+                   OnClick="@(() => Nav.NavigateTo($"/izlaznost-istorija/{BmId}"))">
+            Погледај хронологију (@_data.Unosi.Count уноса)
+        </MudButton>
+    }
+</div>
+
+@code {
+    [Parameter] public string BmId { get; set; } = "";
+
+    private BmIzlaznost? _data;
+    private int? _ukupnoInput;
+    private int? _izlaznostInput;
+
+    protected override void OnInitialized()
+    {
+        if (!AuthService.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        var bm = LocationService.FindBm(BmId);
+        if (bm == null)
+        {
+            Nav.NavigateTo("/location-select");
+            return;
+        }
+
+        _data = IzlaznostService.GetOrCreate(bm);
+        _ukupnoInput = _data.UkupnoBiraca;
+    }
+
+    private async Task SaveUkupno()
+    {
+        if (_ukupnoInput is null or <= 0) return;
+        await IzlaznostService.SetUkupnoBiracaAsync(BmId, _ukupnoInput.Value);
+        Snackbar.Add("Укупан број бирача сачуван.", MudBlazor.Severity.Success);
+        StateHasChanged();
+    }
+
+    private async Task SendIzlaznost()
+    {
+        if (_izlaznostInput is null or <= 0) return;
+        await IzlaznostService.AddUnosAsync(BmId, _izlaznostInput.Value);
+        Snackbar.Add($"Излазност {_izlaznostInput} пријављена.", MudBlazor.Severity.Success);
+        _izlaznostInput = null;
+        StateHasChanged();
+    }
+}
