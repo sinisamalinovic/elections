@@ -4,6 +4,7 @@
 @inject LocationService LocationService
 @inject IzlaznostService IzlaznostService
 @inject QrEncoderService QrEncoder
+@inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
@@ -35,8 +36,12 @@
              Style="margin-right:4px;">
         @_state.AnsweredCount/@_state.TotalItems
     </MudChip>
+    <MudIconButton Icon="@Icons.Material.Filled.Send" Color="Color.Inherit"
+                   OnClick="SendQr" Disabled="@_sending" Title="Пошаљи извештај" />
     <MudIconButton Icon="@Icons.Material.Filled.HowToVote" Color="Color.Inherit"
                    OnClick="@(() => Nav.NavigateTo($"/izlaznost/{BmId}"))" Title="Излазност" />
+    <MudIconButton Icon="@Icons.Material.Filled.FileDownload" Color="Color.Inherit"
+                   OnClick="ExportJson" Title="Извози JSON" />
     <MudIconButton Icon="@Icons.Material.Filled.AddLocation" Color="Color.Inherit"
                    OnClick="AddBm" Title="Додај БМ" />
     <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
@@ -64,7 +69,7 @@
 }
 
 <!-- Content -->
-<div style="padding-top:@(AuthService.CurrentSession.ActiveBmIds.Count > 1 ? "92px" : "56px");padding-bottom:80px;">
+<div style="padding-top:@(AuthService.CurrentSession.ActiveBmIds.Count > 1 ? "92px" : "56px");padding-bottom:16px;">
 
     <!-- BM Info -->
     <div style="padding:12px 16px 0;">
@@ -89,19 +94,6 @@
     </MudExpansionPanels>
 </div>
 
-<!-- Sticky Bottom Bar -->
-<div style="position:fixed;bottom:0;left:0;right:0;padding:12px 16px;background:white;border-top:1px solid #eee;z-index:900;">
-    <button class="send-btn" @onclick="SendQr" disabled="@_sending">
-        @if (_sending)
-        {
-            <span>⏳</span><span>Генерисање…</span>
-        }
-        else
-        {
-            <span>📤</span><span>Пошаљи извештај</span>
-        }
-    </button>
-</div>
 
 <!-- QR Dialog -->
 <MudDialog Visible="_qrDialogOpen" VisibleChanged="@((v) => _qrDialogOpen = v)" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
@@ -156,16 +148,26 @@
     private string _qrBase64 = "";
     private List<string> _validationWarnings = new();
     private bool _sending;
+    private string _serverUrl = "";
 
     protected override void OnParametersSet()
     {
         LoadState();
     }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (!AuthService.IsAuthenticated)
+        {
             Nav.NavigateTo("/login");
+            return;
+        }
+        try
+        {
+            var config = await Http.GetFromJsonAsync<System.Text.Json.JsonElement>("data/config.json");
+            _serverUrl = config.GetProperty("serverUrl").GetString() ?? "";
+        }
+        catch { }
     }
 
     private void LoadState()
@@ -237,6 +239,9 @@
         // Try native share sheet first (Viber, WhatsApp, Telegram, email, etc.)
         var shared = await JS.InvokeAsync<bool>("shareQrCode", _qrBase64, _state.BmDisplayName);
 
+        // Send to server (fire-and-forget, ne blokira QR)
+        _ = SendToServerAsync();
+
         _sending = false;
 
         if (!shared)
@@ -246,6 +251,43 @@
         }
 
         StateHasChanged();
+    }
+
+    private async Task SendToServerAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_serverUrl) || _state == null) return;
+        try
+        {
+            var izlaznost = IzlaznostService.Get(BmId);
+            var req = new SubmitRequest
+            {
+                Email = AuthService.CurrentSession!.Email,
+                BmState = _state,
+                BmIzlaznost = izlaznost
+            };
+            var response = await Http.PostAsJsonAsync($"{_serverUrl.TrimEnd('/')}/api/submit", req);
+            if (!response.IsSuccessStatusCode)
+                Snackbar.Add("Сервер није примио податке. Користите JSON извоз.", MudBlazor.Severity.Warning);
+        }
+        catch
+        {
+            Snackbar.Add("Сервер недоступан — сачувајте JSON фајл.", MudBlazor.Severity.Info);
+        }
+    }
+
+    private async Task ExportJson()
+    {
+        if (_state == null) return;
+        var izlaznost = IzlaznostService.Get(BmId);
+        var req = new SubmitRequest
+        {
+            Email = AuthService.CurrentSession!.Email,
+            BmState = _state,
+            BmIzlaznost = izlaznost
+        };
+        var json = System.Text.Json.JsonSerializer.Serialize(req, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+        var filename = $"bm{_state.BmShortId}-{DateTime.Now:yyyyMMdd-HHmm}.json";
+        await JS.InvokeVoidAsync("downloadJson", json, filename);
     }
 
     private void BuildValidationWarnings()

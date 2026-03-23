@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PosmatraciApp.Models
+namespace PosmatraciApp.Shared.Models
 {
     public class BmState
     {
@@ -13,7 +13,6 @@ namespace PosmatraciApp.Models
         public string BjName { get; set; } = "";
         public DateTime LastModified { get; set; }
 
-        // Parallel arrays indexed by item.Id (0..totalItems-1)
         public AnswerState[] Answers { get; set; } = Array.Empty<AnswerState>();
         public CheckSeverity[] Severities { get; set; } = Array.Empty<CheckSeverity>();
         public Dictionary<int, string> Notes { get; set; } = new();
@@ -22,14 +21,14 @@ namespace PosmatraciApp.Models
         public int AnsweredCount => Answers.Count(a => a != AnswerState.Unanswered);
         public int NeCount => Answers.Count(a => a == AnswerState.Ne);
 
-        public static BmState CreateNew(BirackoMesto bm, string opstineName, string bjName, int totalItems)
+        public static BmState CreateNew(BirackoMesto bm, string opstinaName, string bjName, int totalItems)
         {
             return new BmState
             {
                 BmId = bm.Id,
                 BmShortId = bm.ShortId,
                 BmDisplayName = bm.Name,
-                OpstineName = opstineName,
+                OpstineName = opstinaName,
                 BjName = bjName,
                 LastModified = DateTime.UtcNow,
                 Answers = new AnswerState[totalItems],

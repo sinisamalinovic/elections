@@ -1,0 +1,142 @@
+@page "/"
+@page "/izlaznost"
+@inject ReportService ReportService
+@implements IDisposable
+
+<PageTitle>Излазност по БМ</PageTitle>
+
+<div style="padding:16px;">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+        <MudText Typo="Typo.h5" Style="font-weight:700;">Излазност по биrачком месту</MudText>
+        <MudSpacer />
+        <MudSelect T="string" Label="Општина" Variant="Variant.Outlined" Dense="true"
+                   @bind-Value="_filterOpstina" Style="min-width:180px;">
+            <MudSelectItem T="string" Value='""'>Све општине</MudSelectItem>
+            @foreach (var o in _opstine)
+            {
+                <MudSelectItem T="string" Value="@o">@o</MudSelectItem>
+            }
+        </MudSelect>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Освежава се: @_lastRefresh.ToLocalTime().ToString("HH:mm:ss")
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <div style="display:flex;justify-content:center;padding:48px;">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        var rows = string.IsNullOrEmpty(_filterOpstina)
+            ? _rows
+            : _rows.Where(r => r.OpstineName == _filterOpstina).ToList();
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-bottom:8px;display:block;">
+            @rows.Count БМ пријављено | @rows.Count(r => r.BmIzlaznost?.Unosi.Count > 0) са излазношћу
+        </MudText>
+
+        <MudTable Items="@rows" Dense="true" Hover="true" Striped="true"
+                  SortLabel="Сортирај" Style="font-size:13px;">
+            <HeaderContent>
+                <MudTh><MudTableSortLabel SortBy='new Func<BmReportRow, object>(r => r.BmShortId)'>БМ</MudTableSortLabel></MudTh>
+                <MudTh>Назив</MudTh>
+                <MudTh>Општина</MudTh>
+                <MudTh><MudTableSortLabel SortBy='new Func<BmReportRow, object>(r => r.BmIzlaznost?.UkupnoBiraca ?? 0)'>Укупно</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortBy='new Func<BmReportRow, object>(r => LastGlasalo(r))'>Гласало</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortBy='new Func<BmReportRow, object>(r => LastPostotak(r) ?? 0)'>%</MudTableSortLabel></MudTh>
+                <MudTh>Уноса</MudTh>
+                <MudTh>Време</MudTh>
+                <MudTh>Посматрач</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                @{
+                    var last = context.BmIzlaznost?.Unosi.LastOrDefault();
+                    var pct = last != null ? context.BmIzlaznost!.PostotakIzlaznosti(last.BrojGlasaca) : null;
+                    var rowColor = GetRowColor(pct);
+                }
+                <MudTd Style="font-weight:600;">@context.BmShortId</MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.BmDisplayName</MudText>
+                </MudTd>
+                <MudTd><MudText Typo="Typo.caption">@context.OpstineName</MudText></MudTd>
+                <MudTd>@(context.BmIzlaznost?.UkupnoBiraca?.ToString() ?? "—")</MudTd>
+                <MudTd>
+                    @if (last != null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="@rowColor" Variant="Variant.Filled">
+                            @last.BrojGlasaca
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudText Color="Color.Secondary">—</MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    @if (pct.HasValue)
+                    {
+                        <MudText Style="@($"font-weight:700;color:{GetPctColor(pct.Value)}")">@pct.Value%</MudText>
+                    }
+                    else { <span>—</span> }
+                </MudTd>
+                <MudTd>@(context.BmIzlaznost?.Unosi.Count ?? 0)</MudTd>
+                <MudTd><MudText Typo="Typo.caption">@context.ReceivedAt.ToLocalTime().ToString("HH:mm")</MudText></MudTd>
+                <MudTd><MudText Typo="Typo.caption">@context.Email</MudText></MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</div>
+
+@code {
+    private List<BmReportRow> _rows = new();
+    private List<string> _opstine = new();
+    private string _filterOpstina = "";
+    private bool _loading = true;
+    private DateTime _lastRefresh = DateTime.UtcNow;
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _timer = new Timer(async _ =>
+        {
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+    }
+
+    private async Task LoadAsync()
+    {
+        _rows = await ReportService.GetLatestPerBmAsync();
+        _opstine = _rows.Select(r => r.OpstineName).Distinct().OrderBy(n => n).ToList();
+        _lastRefresh = DateTime.UtcNow;
+        _loading = false;
+    }
+
+    private static int LastGlasalo(BmReportRow r) => r.BmIzlaznost?.Unosi.LastOrDefault()?.BrojGlasaca ?? 0;
+    private static double? LastPostotak(BmReportRow r)
+    {
+        var last = r.BmIzlaznost?.Unosi.LastOrDefault();
+        return last != null ? r.BmIzlaznost!.PostotakIzlaznosti(last.BrojGlasaca) : null;
+    }
+
+    private static Color GetRowColor(double? pct) => pct switch
+    {
+        > 50 => Color.Success,
+        > 20 => Color.Warning,
+        not null => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string GetPctColor(double pct) => pct switch
+    {
+        > 50 => "#2e7d32",
+        > 20 => "#e65100",
+        _ => "#c62828"
+    };
+
+    public void Dispose() => _timer?.Dispose();
+}

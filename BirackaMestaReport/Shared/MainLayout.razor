@@ -1,0 +1,28 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudText Typo="Typo.h6" Style="font-weight:700;">Бирачка Места — Извештај</MudText>
+        <MudSpacer />
+        <MudButton Color="Color.Inherit" StartIcon="@Icons.Material.Filled.HowToVote"
+                   OnClick="@(() => Nav.NavigateTo("/izlaznost"))">Излазност</MudButton>
+        <MudButton Color="Color.Inherit" StartIcon="@Icons.Material.Filled.CheckCircle"
+                   OnClick="@(() => Nav.NavigateTo("/checklista"))">Чек-листа</MudButton>
+        <MudButton Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Upload"
+                   OnClick="@(() => Nav.NavigateTo("/upload"))">Upload</MudButton>
+        <MudButton Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Logout"
+                   OnClick="Logout">Одјава</MudButton>
+    </MudAppBar>
+
+    <MudMainContent Style="padding-top:64px;">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private void Logout()
+    {
+        Nav.NavigateTo("/login?logout=1", forceLoad: true);
+    }
+}

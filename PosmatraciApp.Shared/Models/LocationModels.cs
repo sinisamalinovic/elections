@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace PosmatraciApp.Models
+namespace PosmatraciApp.Shared.Models
 {
     public class LocationData
     {

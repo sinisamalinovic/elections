@@ -1,0 +1,89 @@
+@page "/upload"
+@inject ISnackbar Snackbar
+@inject ReportService ReportService
+@using System.Text.Json
+
+<PageTitle>Upload JSON</PageTitle>
+
+<div style="padding:24px;max-width:600px;">
+    <MudText Typo="Typo.h5" Style="font-weight:700;margin-bottom:16px;">Ручни upload JSON фајла</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Style="margin-bottom:24px;">
+        Отпремите JSON фајл који је посматрач проследио путем Vibera/WhatsApp-а.
+    </MudText>
+
+    <MudPaper Elevation="1" Style="padding:24px;">
+        <InputFile OnChange="HandleFile" accept=".json" style="margin-bottom:16px;display:block;" />
+
+        @if (_parsed != null)
+        {
+            <MudAlert Severity="MudBlazor.Severity.Info" Style="margin-bottom:16px;">
+                <MudText Typo="Typo.subtitle2">Садржај фајла:</MudText>
+                <MudText Typo="Typo.body2">Email: @_parsed.Email</MudText>
+                <MudText Typo="Typo.body2">БМ: @_parsed.BmState?.BmDisplayName (@_parsed.BmState?.BmShortId)</MudText>
+                <MudText Typo="Typo.body2">Одговорено: @_parsed.BmState?.AnsweredCount/@_parsed.BmState?.TotalItems</MudText>
+                @if (_parsed.BmIzlaznost != null)
+                {
+                    <MudText Typo="Typo.body2">Уноса излазности: @_parsed.BmIzlaznost.Unosi.Count</MudText>
+                }
+            </MudAlert>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       OnClick="Import" Disabled="_importing">
+                @(_importing ? "Увоз у току..." : "Увези у базу")
+            </MudButton>
+        }
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <MudAlert Severity="MudBlazor.Severity.Error" Style="margin-top:12px;">@_error</MudAlert>
+        }
+    </MudPaper>
+</div>
+
+@code {
+    private SubmitRequest? _parsed;
+    private string _error = "";
+    private bool _importing;
+
+    private async Task HandleFile(InputFileChangeEventArgs e)
+    {
+        _error = "";
+        _parsed = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            _parsed = await JsonSerializer.DeserializeAsync<SubmitRequest>(stream,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (_parsed?.BmState == null)
+            {
+                _error = "Фајл не садржи BmState.";
+                _parsed = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Грешка при читању фајла: {ex.Message}";
+        }
+    }
+
+    private async Task Import()
+    {
+        if (_parsed?.BmState == null) return;
+        _importing = true;
+        try
+        {
+            await ReportService.SaveSubmissionAsync(_parsed.Email, _parsed.BmState, _parsed.BmIzlaznost);
+            Snackbar.Add("Успешно увезено!", MudBlazor.Severity.Success);
+            _parsed = null;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Грешка при увозу: {ex.Message}";
+        }
+        finally
+        {
+            _importing = false;
+        }
+    }
+}

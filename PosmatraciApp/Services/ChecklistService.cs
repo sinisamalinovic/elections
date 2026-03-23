@@ -1,4 +1,4 @@
-using PosmatraciApp.Models;
+using PosmatraciApp.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;

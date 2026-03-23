@@ -1,0 +1,193 @@
+@page "/checklista"
+@inject ReportService ReportService
+@inject IWebHostEnvironment Env
+@implements IDisposable
+
+<PageTitle>Чек-листа / Инциденти</PageTitle>
+
+<div style="padding:16px;">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+        <MudText Typo="Typo.h5" Style="font-weight:700;">Чек-листа по биrачком месту</MudText>
+        <MudSpacer />
+        <MudSelect T="string" Label="Општина" Variant="Variant.Outlined" Dense="true"
+                   @bind-Value="_filterOpstina" Style="min-width:180px;">
+            <MudSelectItem T="string" Value='""'>Све општине</MudSelectItem>
+            @foreach (var o in _opstine)
+            {
+                <MudSelectItem T="string" Value="@o">@o</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSwitch @bind-Value="_onlyIncidents" Color="Color.Error" Label="Само инциденти" />
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @_lastRefresh.ToLocalTime().ToString("HH:mm:ss")
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <div style="display:flex;justify-content:center;padding:48px;">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        var rows = _rows
+            .Where(r => string.IsNullOrEmpty(_filterOpstina) || r.OpstineName == _filterOpstina)
+            .Where(r => !_onlyIncidents || KCount(r) + VCount(r) > 0)
+            .OrderByDescending(r => KCount(r) * 100 + VCount(r) * 10 + SCount(r))
+            .ThenBy(r => r.BmShortId)
+            .ToList();
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-bottom:8px;display:block;">
+            @rows.Count БМ | @rows.Count(r => KCount(r) > 0) са критичним | @rows.Count(r => VCount(r) > 0) са високим
+        </MudText>
+
+        <MudTable Items="@rows" Dense="true" Hover="true" Striped="true"
+                  SortLabel="Сортирај" Style="font-size:13px;"
+                  T="BmReportRow">
+            <HeaderContent>
+                <MudTh>БМ</MudTh>
+                <MudTh>Назив</MudTh>
+                <MudTh>Општина</MudTh>
+                <MudTh>Одг/Укупно</MudTh>
+                <MudTh>Не</MudTh>
+                <MudTh style="color:#c62828;font-weight:700;">K</MudTh>
+                <MudTh style="color:#e65100;font-weight:700;">V</MudTh>
+                <MudTh style="color:#f57f17;font-weight:700;">S</MudTh>
+                <MudTh>Време</MudTh>
+                <MudTh>Посматрач</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                @{
+                    var k = KCount(context);
+                    var v = VCount(context);
+                    var s = SCount(context);
+                    var rowBg = k > 0 ? "#fff3f3" : v > 0 ? "#fff8f0" : "";
+                }
+                <MudTd Style="font-weight:600;">@context.BmShortId</MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.BmDisplayName</MudText>
+                </MudTd>
+                <MudTd><MudText Typo="Typo.caption">@context.OpstineName</MudText></MudTd>
+                <MudTd>
+                    @if (context.BmState != null)
+                    {
+                        <span>@context.BmState.AnsweredCount/@context.BmState.TotalItems</span>
+                    }
+                    else { <span>—</span> }
+                </MudTd>
+                <MudTd>@(context.BmState?.NeCount ?? 0)</MudTd>
+                <MudTd>
+                    @if (k > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">@k</MudChip>
+                    }
+                    else { <span style="color:#999;">0</span> }
+                </MudTd>
+                <MudTd>
+                    @if (v > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">@v</MudChip>
+                    }
+                    else { <span style="color:#999;">0</span> }
+                </MudTd>
+                <MudTd>@s</MudTd>
+                <MudTd><MudText Typo="Typo.caption">@context.ReceivedAt.ToLocalTime().ToString("HH:mm")</MudText></MudTd>
+                <MudTd><MudText Typo="Typo.caption">@context.Email</MudText></MudTd>
+            </RowTemplate>
+            <ChildRowContent>
+                @if (context.BmState != null && (KCount(context) + VCount(context)) > 0)
+                {
+                    <MudTr>
+                        <MudTd colspan="10" Style="padding:0 16px 12px 48px;background:#fafafa;">
+                            @foreach (var inc in GetIncidents(context))
+                            {
+                                <div style="margin:6px 0;padding:8px;border-left:3px solid @(inc.Severity == CheckSeverity.K ? "#c62828" : "#e65100");background:white;">
+                                    <MudText Typo="Typo.caption" Style="@($"font-weight:600;color:{(inc.Severity == CheckSeverity.K ? "#c62828" : "#e65100")}")">
+                                        [@inc.Severity] #{inc.ItemId}
+                                    </MudText>
+                                    <MudText Typo="Typo.caption">@inc.Text</MudText>
+                                    @if (!string.IsNullOrEmpty(inc.Note))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-top:2px;">
+                                            📝 @inc.Note
+                                        </MudText>
+                                    }
+                                </div>
+                            }
+                        </MudTd>
+                    </MudTr>
+                }
+            </ChildRowContent>
+        </MudTable>
+    }
+</div>
+
+@code {
+    private List<BmReportRow> _rows = new();
+    private List<string> _opstine = new();
+    private string _filterOpstina = "";
+    private bool _onlyIncidents;
+    private bool _loading = true;
+    private DateTime _lastRefresh = DateTime.UtcNow;
+    private List<ChecklistSectionDefinition> _sections = new();
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadChecklistAsync();
+        await LoadAsync();
+        _timer = new Timer(async _ =>
+        {
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+    }
+
+    private async Task LoadChecklistAsync()
+    {
+        try
+        {
+            var path = Path.Combine(Env.WebRootPath, "data", "checklist.json");
+            if (File.Exists(path))
+            {
+                var json = await File.ReadAllTextAsync(path);
+                var def = System.Text.Json.JsonSerializer.Deserialize<ChecklistDefinition>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (def != null) _sections = def.Sections;
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadAsync()
+    {
+        _rows = await ReportService.GetLatestPerBmAsync();
+        _opstine = _rows.Select(r => r.OpstineName).Distinct().OrderBy(n => n).ToList();
+        _lastRefresh = DateTime.UtcNow;
+        _loading = false;
+    }
+
+    private static int KCount(BmReportRow r) => r.BmState?.Severities.Count(s => s == CheckSeverity.K) ?? 0;
+    private static int VCount(BmReportRow r) => r.BmState?.Severities.Count(s => s == CheckSeverity.V) ?? 0;
+    private static int SCount(BmReportRow r) => r.BmState?.Severities.Count(s => s == CheckSeverity.S) ?? 0;
+
+    private record IncidentItem(int ItemId, CheckSeverity Severity, string Text, string? Note);
+
+    private List<IncidentItem> GetIncidents(BmReportRow row)
+    {
+        if (row.BmState == null) return new();
+        var result = new List<IncidentItem>();
+        for (int i = 0; i < row.BmState.Severities.Length; i++)
+        {
+            var sev = row.BmState.Severities[i];
+            if (sev != CheckSeverity.K && sev != CheckSeverity.V) continue;
+            var text = _sections.SelectMany(s => s.Items).FirstOrDefault(it => it.Id == i)?.Text ?? $"Stavka #{i}";
+            row.BmState.Notes.TryGetValue(i, out var note);
+            result.Add(new IncidentItem(i, sev, text, note));
+        }
+        return result.OrderByDescending(x => (int)x.Severity).ToList();
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

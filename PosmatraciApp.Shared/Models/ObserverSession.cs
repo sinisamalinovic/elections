@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace PosmatraciApp.Models
+namespace PosmatraciApp.Shared.Models
 {
     public class ObserverSession
     {
