@@ -28,8 +28,8 @@
 
 <!-- Top AppBar -->
 <MudAppBar Elevation="1" Color="Color.Primary" Fixed="true" Dense="true">
-    <MudText Typo="Typo.subtitle1" Style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">
-        @_state.BmDisplayName
+    <MudText Typo="Typo.subtitle1" Style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">
+        @_state.BmShortId. @_state.BmDisplayName
     </MudText>
     <MudSpacer />
     <MudChip T="string" Color="@GetOverallProgressColor()" Variant="Variant.Filled" Size="Size.Small"
@@ -62,7 +62,7 @@
                      Size="Size.Small"
                      Style="margin-right:4px;"
                      OnClick="@(() => SwitchBm(bmId))">
-                @(bm?.Name ?? bmId)
+                @(bm == null ? bmId : $"{bm.ShortId}. {bm.Name}")
             </MudChip>
         }
     </div>

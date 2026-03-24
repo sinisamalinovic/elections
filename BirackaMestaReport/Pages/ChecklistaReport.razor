@@ -46,6 +46,7 @@
                   SortLabel="Сортирај" Style="font-size:13px;"
                   T="BmReportRow">
             <HeaderContent>
+                <MudTh></MudTh>
                 <MudTh>БМ</MudTh>
                 <MudTh>Назив</MudTh>
                 <MudTh>Општина</MudTh>
@@ -62,8 +63,15 @@
                     var k = KCount(context);
                     var v = VCount(context);
                     var s = SCount(context);
-                    var rowBg = k > 0 ? "#fff3f3" : v > 0 ? "#fff8f0" : "";
+                    var isExpanded = _expandedRows.Contains(context.BmId);
                 }
+                <MudTd Style="padding:0 4px;">
+                    @if (context.BmState != null)
+                    {
+                        <MudIconButton Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                       Size="Size.Small" OnClick="@(() => ToggleRow(context.BmId))" />
+                    }
+                </MudTd>
                 <MudTd Style="font-weight:600;">@context.BmShortId</MudTd>
                 <MudTd>
                     <MudText Typo="Typo.body2">@context.BmDisplayName</MudText>
@@ -96,22 +104,44 @@
                 <MudTd><MudText Typo="Typo.caption">@context.Email</MudText></MudTd>
             </RowTemplate>
             <ChildRowContent>
-                @if (context.BmState != null && (KCount(context) + VCount(context)) > 0)
+                @if (context.BmState != null && _expandedRows.Contains(context.BmId))
                 {
                     <MudTr>
-                        <MudTd colspan="10" Style="padding:0 16px 12px 48px;background:#fafafa;">
-                            @foreach (var inc in GetIncidents(context))
+                        <MudTd colspan="11" Style="padding:8px 16px 16px 32px;background:#fafafa;">
+                            @foreach (var sect in _sections)
                             {
-                                <div style="margin:6px 0;padding:8px;border-left:3px solid @(inc.Severity == CheckSeverity.K ? "#c62828" : "#e65100");background:white;">
-                                    <MudText Typo="Typo.caption" Style="@($"font-weight:600;color:{(inc.Severity == CheckSeverity.K ? "#c62828" : "#e65100")}")">
-                                        [@inc.Severity] #{inc.ItemId}
+                                var sectionItems = sect.Items.Where(it => it.Id < context.BmState.Answers.Length).ToList();
+                                if (!sectionItems.Any()) continue;
+                                <div style="margin-bottom:12px;">
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:6px;border-bottom:1px solid #ddd;padding-bottom:4px;">
+                                        @sect.Title
                                     </MudText>
-                                    <MudText Typo="Typo.caption">@inc.Text</MudText>
-                                    @if (!string.IsNullOrEmpty(inc.Note))
+                                    @foreach (var item in sectionItems)
                                     {
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-top:2px;">
-                                            📝 @inc.Note
-                                        </MudText>
+                                        var answer = context.BmState.Answers[item.Id];
+                                        var sev = item.Id < context.BmState.Severities.Length ? context.BmState.Severities[item.Id] : CheckSeverity.None;
+                                        context.BmState.Notes.TryGetValue(item.Id, out var note);
+
+                                        var answerColor = answer == AnswerState.Da ? "#2e7d32" : answer == AnswerState.Ne ? "#c62828" : "#999";
+                                        var answerText = answer == AnswerState.Da ? "Да" : answer == AnswerState.Ne ? "Не" : answer == AnswerState.NA ? "Н/А" : "—";
+                                        var sevColor = sev == CheckSeverity.K ? "#c62828" : sev == CheckSeverity.V ? "#e65100" : sev == CheckSeverity.S ? "#f57f17" : "transparent";
+                                        var rowStyle = sev == CheckSeverity.K ? "background:#fff3f3;" : sev == CheckSeverity.V ? "background:#fff8f0;" : "";
+
+                                        <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 6px;border-radius:4px;@rowStyle">
+                                            <span style="color:#aaa;font-size:11px;min-width:24px;padding-top:1px;">@item.Id</span>
+                                            <span style="flex:1;font-size:12px;">@item.Text</span>
+                                            <span style="font-size:12px;font-weight:600;min-width:28px;text-align:right;color:@answerColor;">@answerText</span>
+                                            @if (sev != CheckSeverity.None && sev != CheckSeverity.N)
+                                            {
+                                                <span style="font-size:11px;font-weight:700;color:@sevColor;min-width:18px;">@sev</span>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(note))
+                                        {
+                                            <div style="padding:2px 6px 4px 38px;font-size:11px;color:#666;">
+                                                📝 @note
+                                            </div>
+                                        }
                                     }
                                 </div>
                             }
@@ -132,6 +162,13 @@
     private DateTime _lastRefresh = DateTime.UtcNow;
     private List<ChecklistSectionDefinition> _sections = new();
     private Timer? _timer;
+    private HashSet<string> _expandedRows = new();
+
+    private void ToggleRow(string bmId)
+    {
+        if (!_expandedRows.Remove(bmId))
+            _expandedRows.Add(bmId);
+    }
 
     protected override async Task OnInitializedAsync()
     {
