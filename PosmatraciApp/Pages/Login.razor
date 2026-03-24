@@ -1,6 +1,7 @@
 @page "/login"
 @inject AuthService AuthService
 @inject NavigationManager Nav
+@inject HttpClient Http
 
 <PageTitle>Пријава - Посматрач</PageTitle>
 
@@ -11,6 +12,10 @@
                 <MudIcon Icon="@Icons.Material.Filled.HowToVote" Color="Color.Primary" Style="font-size:3rem;" />
                 <MudText Typo="Typo.h5" Style="margin-top:8px;font-weight:600;">Посматрач изборa</MudText>
                 <MudText Typo="Typo.body2" Color="Color.Secondary">Чек-листа за биrачко место</MudText>
+            @if (!string.IsNullOrEmpty(_buildTime))
+            {
+                <MudText Typo="Typo.caption" Style="color:#bbb;margin-top:4px;">v@_buildTime</MudText>
+            }
             </div>
 
             <MudTextField @bind-Value="_email"
@@ -49,9 +54,17 @@
     private string _email = "";
     private string _errorMsg = "";
     private bool _loading;
+    private string _buildTime = "";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        try
+        {
+            var info = await Http.GetFromJsonAsync<VersionInfo>("data/version.json");
+            _buildTime = info?.BuildTime ?? "";
+        }
+        catch { /* tiho ako fajl ne postoji */ }
+
         if (AuthService.IsAuthenticated)
         {
             var session = AuthService.CurrentSession!;
@@ -80,5 +93,10 @@
     private async Task OnKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter") await DoLogin();
+    }
+
+    private class VersionInfo
+    {
+        public string BuildTime { get; set; } = "";
     }
 }

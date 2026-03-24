@@ -23,4 +23,14 @@
     <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
   </ItemGroup>
 
+  <!-- Automatski upisuje build timestamp u wwwroot/data/version.json pri svakom buildu -->
+  <Target Name="WriteVersionJson" BeforeTargets="Build">
+    <PropertyGroup>
+      <BuildTimestamp>$([System.DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm'))</BuildTimestamp>
+    </PropertyGroup>
+    <WriteLinesToFile File="wwwroot\data\version.json"
+                      Lines='{"buildTime": "$(BuildTimestamp) UTC"}'
+                      Overwrite="true" />
+  </Target>
+
 </Project>
