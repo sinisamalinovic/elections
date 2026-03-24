@@ -21,9 +21,9 @@ else
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>
-            <MainLayout>
+            <LayoutView Layout="@typeof(Layout.MainLayout)">
                 <MudText>Страница није пронађена.</MudText>
-            </MainLayout>
+            </LayoutView>
         </NotFound>
     </Router>
 }
