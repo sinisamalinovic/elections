@@ -26,9 +26,44 @@
     return;
 }
 
+<!-- Drawer -->
+<MudDrawer @bind-Open="_drawerOpen" Anchor="Anchor.Left" Elevation="2" Variant="DrawerVariant.Temporary" ClipMode="DrawerClipMode.Never">
+    <MudDrawerHeader>
+        <MudText Typo="Typo.subtitle2" Style="font-weight:600;word-break:break-word;">
+            @_state.BmShortId. @_state.BmDisplayName
+        </MudText>
+    </MudDrawerHeader>
+    <MudDivider />
+    <MudList T="string" Style="padding-top:8px;">
+        <MudListItem T="string" Icon="@Icons.Material.Filled.HowToVote"
+                     OnClick="@(() => { _drawerOpen = false; Nav.NavigateTo($"/izlaznost/{BmId}"); })">
+            Излазност
+        </MudListItem>
+        <MudListItem T="string" Icon="@Icons.Material.Filled.QrCode2"
+                     OnClick="@(() => { _drawerOpen = false; ShowQrDialog(); })">
+            Извоз / QR
+        </MudListItem>
+        <MudListItem T="string" Icon="@Icons.Material.Filled.FileDownload"
+                     OnClick="@(() => { _drawerOpen = false; _ = ExportJson(); })">
+            Сачувај JSON
+        </MudListItem>
+        <MudListItem T="string" Icon="@Icons.Material.Filled.AddLocation"
+                     OnClick="@(() => { _drawerOpen = false; AddBm(); })">
+            Додај БМ
+        </MudListItem>
+        <MudDivider Style="margin:8px 0;" />
+        <MudListItem T="string" Icon="@Icons.Material.Filled.Logout"
+                     OnClick="@(() => { _drawerOpen = false; _ = Logout(); })">
+            Одјава
+        </MudListItem>
+    </MudList>
+</MudDrawer>
+
 <!-- Top AppBar -->
 <MudAppBar Elevation="1" Color="Color.Primary" Fixed="true" Dense="true">
-    <MudText Typo="Typo.subtitle1" Style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">
+    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
+                   OnClick="@(() => _drawerOpen = !_drawerOpen)" />
+    <MudText Typo="Typo.subtitle1" Style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">
         @_state.BmShortId. @_state.BmDisplayName
     </MudText>
     <MudSpacer />
@@ -37,15 +72,7 @@
         @_state.AnsweredCount/@_state.TotalItems
     </MudChip>
     <MudIconButton Icon="@Icons.Material.Filled.Send" Color="Color.Inherit"
-                   OnClick="SendQr" Disabled="@_sending" Title="Пошаљи извештај" />
-    <MudIconButton Icon="@Icons.Material.Filled.HowToVote" Color="Color.Inherit"
-                   OnClick="@(() => Nav.NavigateTo($"/izlaznost/{BmId}"))" Title="Излазност" />
-    <MudIconButton Icon="@Icons.Material.Filled.FileDownload" Color="Color.Inherit"
-                   OnClick="ExportJson" Title="Извози JSON" />
-    <MudIconButton Icon="@Icons.Material.Filled.AddLocation" Color="Color.Inherit"
-                   OnClick="AddBm" Title="Додај БМ" />
-    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
-                   OnClick="Logout" Title="Одјава" />
+                   OnClick="SendToServer" Disabled="@_sending" Title="Пошаљи извештај на сервер" />
 </MudAppBar>
 
 <!-- BM Switcher -->
@@ -94,11 +121,10 @@
     </MudExpansionPanels>
 </div>
 
-
-<!-- QR Dialog -->
+<!-- QR / Export Dialog -->
 <MudDialog Visible="_qrDialogOpen" VisibleChanged="@((v) => _qrDialogOpen = v)" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
     <TitleContent>
-        <MudText Typo="Typo.h6">QR Код — @_state.BmDisplayName</MudText>
+        <MudText Typo="Typo.h6">Извоз — @_state.BmDisplayName</MudText>
     </TitleContent>
     <DialogContent>
         @if (_validationWarnings.Count > 0)
@@ -133,7 +159,10 @@
         <MudButton OnClick="@(() => _qrDialogOpen = false)">Затвори</MudButton>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Download"
-                   OnClick="DownloadQr">Преузми</MudButton>
+                   OnClick="DownloadQr">QR слика</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.FileDownload"
+                   OnClick="ExportJsonFromDialog">JSON</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Share"
                    OnClick="ShareQr">Подели</MudButton>
@@ -144,6 +173,7 @@
     [Parameter] public string BmId { get; set; } = "";
 
     private BmState? _state;
+    private bool _drawerOpen;
     private bool _qrDialogOpen;
     private string _qrBase64 = "";
     private List<string> _validationWarnings = new();
@@ -221,41 +251,24 @@
     }
 
     /// <summary>
-    /// Generates QR and immediately opens the native phone share sheet (Viber, WhatsApp, etc.).
-    /// Falls back to the QR dialog if Web Share API is unavailable.
+    /// Šalje podatke direktno na server API — bez QR dialoga.
     /// </summary>
-    private async Task SendQr()
+    private async Task SendToServer()
     {
         if (_state == null || _sending) return;
         _sending = true;
         StateHasChanged();
 
-        BuildValidationWarnings();
-
-        var payload = QrEncoder.EncodeToBase64Url(_state, AuthService.CurrentSession!.EmailHash);
-        _qrBase64 = QrEncoder.GenerateQrPngBase64(payload);
         await ChecklistService.SaveAllAsync();
 
-        // Try native share sheet first (Viber, WhatsApp, Telegram, email, etc.)
-        var shared = await JS.InvokeAsync<bool>("shareQrCode", _qrBase64, _state.BmDisplayName);
-
-        // Send to server (fire-and-forget, ne blokira QR)
-        _ = SendToServerAsync();
-
-        _sending = false;
-
-        if (!shared)
+        if (string.IsNullOrWhiteSpace(_serverUrl))
         {
-            // Web Share not supported on this device/browser — show QR dialog instead
-            _qrDialogOpen = true;
+            Snackbar.Add("Сервер URL није подешен у config.json.", MudBlazor.Severity.Warning);
+            _sending = false;
+            StateHasChanged();
+            return;
         }
 
-        StateHasChanged();
-    }
-
-    private async Task SendToServerAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_serverUrl) || _state == null) return;
         try
         {
             var izlaznost = IzlaznostService.Get(BmId);
@@ -266,13 +279,32 @@
                 BmIzlaznost = izlaznost
             };
             var response = await Http.PostAsJsonAsync($"{_serverUrl.TrimEnd('/')}/api/submit", req);
-            if (!response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
+                Snackbar.Add("✓ Подаци послати на сервер.", MudBlazor.Severity.Success);
+            else
                 Snackbar.Add("Сервер није примио податке. Користите JSON извоз.", MudBlazor.Severity.Warning);
         }
         catch
         {
-            Snackbar.Add("Сервер недоступан — сачувајте JSON фајл.", MudBlazor.Severity.Info);
+            Snackbar.Add("Сервер недоступан — користите JSON извоз.", MudBlazor.Severity.Error);
         }
+
+        _sending = false;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Otvara QR/share dialog (poziva se iz drawer-a).
+    /// </summary>
+    private void ShowQrDialog()
+    {
+        if (_state == null) return;
+        BuildValidationWarnings();
+        var payload = QrEncoder.EncodeToBase64Url(_state, AuthService.CurrentSession!.EmailHash);
+        _qrBase64 = QrEncoder.GenerateQrPngBase64(payload);
+        _ = ChecklistService.SaveAllAsync();
+        _qrDialogOpen = true;
+        StateHasChanged();
     }
 
     private async Task ExportJson()
@@ -288,6 +320,12 @@
         var json = System.Text.Json.JsonSerializer.Serialize(req, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
         var filename = $"bm{_state.BmShortId}-{DateTime.Now:yyyyMMdd-HHmm}.json";
         await JS.InvokeVoidAsync("downloadJson", json, filename);
+    }
+
+    private async Task ExportJsonFromDialog()
+    {
+        _qrDialogOpen = false;
+        await ExportJson();
     }
 
     private void BuildValidationWarnings()

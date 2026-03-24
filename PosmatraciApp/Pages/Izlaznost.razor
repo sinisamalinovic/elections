@@ -22,16 +22,35 @@
     return;
 }
 
+<!-- Drawer -->
+<MudDrawer @bind-Open="_drawerOpen" Anchor="Anchor.Left" Elevation="2" Variant="DrawerVariant.Temporary" ClipMode="DrawerClipMode.Never">
+    <MudDrawerHeader>
+        <MudText Typo="Typo.subtitle2" Style="font-weight:600;word-break:break-word;">
+            @_data.BmShortId. @_data.BmDisplayName
+        </MudText>
+    </MudDrawerHeader>
+    <MudDivider />
+    <MudList T="string" Style="padding-top:8px;">
+        <MudListItem T="string" Icon="@Icons.Material.Filled.Checklist"
+                     OnClick="@(() => { _drawerOpen = false; Nav.NavigateTo($"/checklist/{BmId}"); })">
+            Чек-листа
+        </MudListItem>
+        <MudListItem T="string" Icon="@Icons.Material.Filled.History"
+                     OnClick="@(() => { _drawerOpen = false; Nav.NavigateTo($"/izlaznost-istorija/{BmId}"); })">
+            Хронологија
+        </MudListItem>
+    </MudList>
+</MudDrawer>
+
 <MudAppBar Elevation="1" Color="Color.Primary" Fixed="true" Dense="true">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit"
-                   OnClick="@(() => Nav.NavigateTo($"/checklist/{BmId}"))" />
-    <MudText Typo="Typo.subtitle1" Style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">
-        @_data.BmDisplayName
+    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"
+                   OnClick="@(() => _drawerOpen = !_drawerOpen)" />
+    <MudText Typo="Typo.subtitle1" Style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">
+        @_data.BmShortId. @_data.BmDisplayName
     </MudText>
     <MudSpacer />
-    <MudIconButton Icon="@Icons.Material.Filled.History" Color="Color.Inherit"
-                   OnClick="@(() => Nav.NavigateTo($"/izlaznost-istorija/{BmId}"))"
-                   Title="Хронологија" />
+    <MudIconButton Icon="@Icons.Material.Filled.Send" Color="Color.Inherit"
+                   OnClick="SendToServer" Disabled="@_sending" Title="Пошаљи на сервер" />
 </MudAppBar>
 
 <div style="padding:72px 16px 16px;">
@@ -95,9 +114,9 @@
         <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
                    Size="Size.Large"
                    StartIcon="@Icons.Material.Filled.Send"
-                   Disabled="_izlaznostInput is null or <= 0"
-                   OnClick="SendIzlaznost">
-            Пошаљи излазност
+                   Disabled="@(_izlaznostInput is null or <= 0 || _sending)"
+                   OnClick="SaveAndSendIzlaznost">
+            Сачувај и пошаљи излазност
         </MudButton>
     </MudPaper>
 
@@ -132,6 +151,8 @@
     private int? _ukupnoInput;
     private int? _izlaznostInput;
     private string _serverUrl = "";
+    private bool _drawerOpen;
+    private bool _sending;
 
     protected override async Task OnInitializedAsync()
     {
@@ -167,19 +188,29 @@
         StateHasChanged();
     }
 
-    private async Task SendIzlaznost()
+    private async Task SaveAndSendIzlaznost()
     {
         if (_izlaznostInput is null or <= 0) return;
         await IzlaznostService.AddUnosAsync(BmId, _izlaznostInput.Value);
-        Snackbar.Add($"Излазност {_izlaznostInput} пријављена.", MudBlazor.Severity.Success);
         _izlaznostInput = null;
         StateHasChanged();
-        _ = SendToServerAsync();
+        await SendToServer();
     }
 
-    private async Task SendToServerAsync()
+    private async Task SendToServer()
     {
-        if (string.IsNullOrWhiteSpace(_serverUrl) || _data == null) return;
+        if (_data == null || _sending) return;
+        _sending = true;
+        StateHasChanged();
+
+        if (string.IsNullOrWhiteSpace(_serverUrl))
+        {
+            Snackbar.Add("Сервер URL није подешен у config.json.", MudBlazor.Severity.Warning);
+            _sending = false;
+            StateHasChanged();
+            return;
+        }
+
         try
         {
             var req = new SubmitRequest
@@ -187,8 +218,18 @@
                 Email = AuthService.CurrentSession!.Email,
                 BmIzlaznost = _data
             };
-            await Http.PostAsJsonAsync($"{_serverUrl.TrimEnd('/')}/api/submit", req);
+            var response = await Http.PostAsJsonAsync($"{_serverUrl.TrimEnd('/')}/api/submit", req);
+            if (response.IsSuccessStatusCode)
+                Snackbar.Add("✓ Излазност послата на сервер.", MudBlazor.Severity.Success);
+            else
+                Snackbar.Add("Сервер није примио податке.", MudBlazor.Severity.Warning);
         }
-        catch { }
+        catch
+        {
+            Snackbar.Add("Сервер недоступан.", MudBlazor.Severity.Error);
+        }
+
+        _sending = false;
+        StateHasChanged();
     }
 }

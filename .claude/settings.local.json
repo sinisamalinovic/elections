@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(dotnet build:*)",
-      "Bash(powershell -File:*)"
+      "Bash(powershell -File:*)",
+      "Bash(dotnet publish:*)"
     ]
   }
 }

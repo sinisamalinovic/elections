@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "totalItems": 92,
+  "sections": [
+    {
+      "sectionIndex": 0,
+      "title": "Припрема бирачког места",
+      "timeRange": "06:00-07:00",
+      "items": [
+        { "id": 0,  "text": "Бирачки одбор се окупио на време у 6.00 ч", "noteRequired": false, "allowNA": false },
+        { "id": 1,  "text": "Сви чланови БО су се представили и носе јасно истакнуте акредитације", "noteRequired": false, "allowNA": false },
+        { "id": 2,  "text": "Присутан извод из бирачког списка", "noteRequired": false, "allowNA": false },
+        { "id": 3,  "text": "Присутна гласачка празна кутија", "noteRequired": false, "allowNA": false },
+        { "id": 4,  "text": "Присутан контролни лист", "noteRequired": false, "allowNA": false },
+        { "id": 5,  "text": "Присутна УВ лампа", "noteRequired": false, "allowNA": false },
+        { "id": 6,  "text": "Присутан спреј за обележавање прста", "noteRequired": false, "allowNA": false },
+        { "id": 7,  "text": "Постављени паравани за тајно гласање тако да нико не може да види за кога бирач гласа", "noteRequired": false, "allowNA": false },
+        { "id": 8,  "text": "Истакнута збирна изборна листа", "noteRequired": false, "allowNA": false },
+        { "id": 9,  "text": "Нема пропагандног материјала у просторији и објекту бирачког места", "noteRequired": true, "allowNA": false },
+        { "id": 10, "text": "Нема пропагандног материјала у кругу од 50 метара около бирачког места", "noteRequired": true, "allowNA": false },
+        { "id": 11, "text": "Попуњен записник у секцији која се односи на рад бирачког одбора пре отварања бирачког места", "noteRequired": false, "allowNA": false },
+        { "id": 12, "text": "Број гласачких листића се слаже са записником", "noteRequired": true, "allowNA": false },
+        { "id": 13, "text": "Додељене улоге члановима БО", "noteRequired": false, "allowNA": false }
+      ]
+    },
+    {
+      "sectionIndex": 1,
+      "title": "Отварање бирачког места",
+      "timeRange": "07:00",
+      "items": [
+        { "id": 14, "text": "Бирачко место отворено у 07.00 ч", "noteRequired": false, "allowNA": false },
+        { "id": 15, "text": "Први бирач присутан", "noteRequired": false, "allowNA": false },
+        { "id": 16, "text": "Кутија показана празна prvом бирачу", "noteRequired": true, "allowNA": false },
+        { "id": 17, "text": "Контролни лист попуњен", "noteRequired": false, "allowNA": false },
+        { "id": 18, "text": "Контролни лист потписали чланови БО", "noteRequired": false, "allowNA": false },
+        { "id": 19, "text": "Контролни лист потписао prvi бирач", "noteRequired": false, "allowNA": false },
+        { "id": 20, "text": "Контролни лист убачен у кутију", "noteRequired": false, "allowNA": false },
+        { "id": 21, "text": "Кутија исправно запечаћена званичним маркицама / јемствеником и без оштећења", "noteRequired": true, "allowNA": false }
+      ]
+    },
+    {
+      "sectionIndex": 2,
+      "title": "Ток гласања на бирачком месту",
+      "timeRange": "07:00-20:00",
+      "items": [
+        { "id": 22, "text": "Чланови БО носе јасно истакнуте акредитације", "noteRequired": false, "allowNA": false },
+        { "id": 23, "text": "Посматрачи носе јасно истакнуте акредитације", "noteRequired": false, "allowNA": false },
+        { "id": 24, "text": "Провера бирача УВ лампом", "noteRequired": false, "allowNA": false },
+        { "id": 25, "text": "Провера идентитета бирача искључиво путем важеће личне карте или важећег пасоша (за војна лица - путем важеће војне легитимације)", "noteRequired": true, "allowNA": false },
+        { "id": 26, "text": "Бирач пронађен у списку", "noteRequired": false, "allowNA": false },
+        { "id": 27, "text": "Бирач се потписује", "noteRequired": false, "allowNA": false },
+        { "id": 28, "text": "Прст обележен спрејом", "noteRequired": false, "allowNA": false },
+        { "id": 29, "text": "Бирач добија један листић", "noteRequired": false, "allowNA": false },
+        { "id": 30, "text": "Бирач се поучава о процесу гласања", "noteRequired": false, "allowNA": false },
+        { "id": 31, "text": "Један бирач иза паравана (осим у случајевима пратећих лица за помоћ регулисану законом)", "noteRequired": true, "allowNA": false },
+        { "id": 32, "text": "Бирач сам убацује пресавијен листић", "noteRequired": false, "allowNA": false },
+        { "id": 33, "text": "Бирач не износи листић", "noteRequired": true, "allowNA": false },
+        { "id": 34, "text": "Групно гласање", "noteRequired": true, "allowNA": false },
+        { "id": 35, "text": "Фотографисање листића", "noteRequired": true, "allowNA": false },
+        { "id": 36, "text": "Притисак на бираче", "noteRequired": true, "allowNA": false },
+        { "id": 37, "text": "Паралелни спискови", "noteRequired": true, "allowNA": false },
+        { "id": 38, "text": "Присуство неовлашћених лица", "noteRequired": true, "allowNA": false },
+        { "id": 39, "text": "Агитација у близини бирачког места", "noteRequired": true, "allowNA": false },
+        { "id": 40, "text": "Вођење приватне евиденције о идентитету бирача", "noteRequired": true, "allowNA": false }
+      ]
+    },
+    {
+      "sectionIndex": 3,
+      "title": "Ток гласања изван бирачког места",
+      "timeRange": "07:00-20:00",
+      "items": [
+        { "id": 41, "text": "Постоји евиденција захтева за гласање изван бирачког места", "noteRequired": false, "allowNA": false },
+        { "id": 42, "text": "Бирач уписан у списак", "noteRequired": false, "allowNA": false },
+        { "id": 43, "text": "Бирач са територије бирачког места", "noteRequired": false, "allowNA": false },
+        { "id": 44, "text": "Три повереника", "noteRequired": true, "allowNA": false },
+        { "id": 45, "text": "Повереници из различитих листа", "noteRequired": false, "allowNA": false },
+        { "id": 46, "text": "Провера идентитета бирача", "noteRequired": false, "allowNA": false },
+        { "id": 47, "text": "Провера УВ лампом", "noteRequired": false, "allowNA": false },
+        { "id": 48, "text": "Бирач потписао потврду", "noteRequired": false, "allowNA": false },
+        { "id": 49, "text": "Листић у унутрашњој коверти", "noteRequired": false, "allowNA": false },
+        { "id": 50, "text": "Потписана потврда + унутрашња коверта у службеној коверти", "noteRequired": false, "allowNA": false },
+        { "id": 51, "text": "Службена коверта затворена", "noteRequired": false, "allowNA": false },
+        { "id": 52, "text": "Коверта предата председнику бирачког одбора", "noteRequired": true, "allowNA": false },
+        { "id": 53, "text": "Потврда потписана", "noteRequired": false, "allowNA": false },
+        { "id": 54, "text": "Тек онда заокружен бирач", "noteRequired": false, "allowNA": false },
+        { "id": 55, "text": "Листић убачен у кутију", "noteRequired": false, "allowNA": false }
+      ]
+    },
+    {
+      "sectionIndex": 4,
+      "title": "Затварање бирачког места",
+      "timeRange": "20:00",
+      "items": [
+        { "id": 56, "text": "Бирачко место затворено у 20.00 ч", "noteRequired": false, "allowNA": false },
+        { "id": 57, "text": "Члан БО у 20 ч стао иза последњег бирача у реду", "noteRequired": true, "allowNA": false },
+        { "id": 58, "text": "Сви бирачи који су се затекли у реду у 20.00 ч гласали", "noteRequired": false, "allowNA": false }
+      ]
+    },
+    {
+      "sectionIndex": 5,
+      "title": "Бројање гласова",
+      "timeRange": "после 20:00",
+      "items": [
+        { "id": 59, "text": "Неупотребљени пребројани листићи и прописно склоњени пре отварања кутије", "noteRequired": true, "allowNA": false },
+        { "id": 60, "text": "Одређен члан БО који попуњава контролни формулар и који врши логичко-рачунске контроле", "noteRequired": false, "allowNA": false },
+        { "id": 61, "text": "Утврђен број уписаних у бирачки списак (извод + посебни извод + извод за Bојску Србије)", "noteRequired": false, "allowNA": false },
+        { "id": 62, "text": "Утврђен број гласалих", "noteRequired": false, "allowNA": false },
+        { "id": 63, "text": "Кутија неоштећена и запечаћена пре отварања", "noteRequired": true, "allowNA": false },
+        { "id": 64, "text": "Кутија отворена пред свима", "noteRequired": false, "allowNA": false },
+        { "id": 65, "text": "Контролни лист пронађен", "noteRequired": false, "allowNA": false },
+        { "id": 66, "text": "Контролни лист проверен", "noteRequired": false, "allowNA": false },
+        { "id": 67, "text": "Да ли су на спојеним столовима пребројани сви листићи, без убрајања контролног листића", "noteRequired": true, "allowNA": false },
+        { "id": 68, "text": "Да ли је одређена једна особа за разврставање листића", "noteRequired": true, "allowNA": false },
+        { "id": 69, "text": "Да ли се листићи исправно разврставају на важеће и неважеће (једна особа видљивих руку, подврнутих рукава и проверено чистих ноктију)", "noteRequired": true, "allowNA": false },
+        { "id": 70, "text": "Да ли су пребројани важећи листићи", "noteRequired": false, "allowNA": false },
+        { "id": 71, "text": "Да ли су пребројани неважећи листићи", "noteRequired": false, "allowNA": false },
+        { "id": 72, "text": "Да ли се признаје као важећи сваки листић на коме је видљива јасно изражена воља бирача", "noteRequired": true, "allowNA": false },
+        { "id": 73, "text": "Да ли остали чланови БО контролишу разврставање листића", "noteRequired": true, "allowNA": false },
+        { "id": 74, "text": "Да ли председник БО подстиче чланове БО из редова опозиције да врше / контролишу разврставање листића и да броје гласове", "noteRequired": false, "allowNA": false },
+        { "id": 75, "text": "Да ли се врши провера видљивости руку и непостојања графита у ноктима и оловки у рукама/рукавима свих чланова БО који броје гласове", "noteRequired": false, "allowNA": false },
+        { "id": 76, "text": "Да ли су пребројани гласови које је добила свака изборна листа", "noteRequired": false, "allowNA": false },
+        { "id": 77, "text": "Да ли се листић показује и јасно гласно чита ime листе/кандидата", "noteRequired": false, "allowNA": false },
+        { "id": 78, "text": "Да ли се листићи обележавају", "noteRequired": true, "allowNA": false },
+        { "id": 79, "text": "Да ли се листићи замењују", "noteRequired": true, "allowNA": false },
+        { "id": 80, "text": "Лице које води контролни формулар је физички одвојено од стола на ком су листићи", "noteRequired": true, "allowNA": false }
+      ]
+    },
+    {
+      "sectionIndex": 6,
+      "title": "Логичко-рачунска контрола",
+      "timeRange": "",
+      "items": [
+        { "id": 81, "text": "Збир гласова по свим листама = број важећих листића", "noteRequired": true, "allowNA": false },
+        { "id": 82, "text": "Важећи + неважећи = листићи у кутији", "noteRequired": true, "allowNA": false },
+        { "id": 83, "text": "Листићи у кутији ≤ број гласалих", "noteRequired": true, "allowNA": false },
+        { "id": 84, "text": "Гласали + неискоришћени = примљени листићи", "noteRequired": true, "allowNA": false },
+        { "id": 85, "text": "Број гласалих ≤ број уписаних", "noteRequired": true, "allowNA": false }
+      ]
+    },
+    {
+      "sectionIndex": 7,
+      "title": "Попуњавање записника",
+      "timeRange": "",
+      "items": [
+        { "id": 86, "text": "Да ли је прво попуњен контролни формулар", "noteRequired": true, "allowNA": false },
+        { "id": 87, "text": "Да ли је затим попуњен записник", "noteRequired": true, "allowNA": false },
+        { "id": 88, "text": "Нема празних рубрика", "noteRequired": true, "allowNA": false },
+        { "id": 89, "text": "Исправке урађене правилно", "noteRequired": true, "allowNA": false },
+        { "id": 90, "text": "Да ли имам забележена времена и описе свих спорних догађаја", "noteRequired": false, "allowNA": false },
+        { "id": 91, "text": "Да ли су на мој захтев у записник унете све примедбе", "noteRequired": false, "allowNA": false }
+      ]
+    }
+  ]
+}

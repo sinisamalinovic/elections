@@ -20,11 +20,12 @@
             </button>
         </div>
 
-        <!-- Risk level checkboxes: N S V K -->
+        <!-- Risk level checkboxes: N S V K — enabled only when Ne is selected -->
         <div class="item-risk-btns">
             @foreach (var (sev, label) in RiskOptions)
             {
                 <button class="risk-btn risk-@sev.ToString().ToLower() @(CurrentSeverity == sev ? "risk-active-" + sev.ToString().ToLower() : "")"
+                        disabled="@(Answer != AnswerState.Ne)"
                         @onclick="@(() => SetSeverity(sev))">
                     @label
                 </button>
@@ -32,10 +33,10 @@
         </div>
     </div>
 
-    <!-- Note field: always shown when Ne, or when a note already exists -->
-    @if (Answer == AnswerState.Ne || !string.IsNullOrWhiteSpace(_noteText))
+    <!-- Note field: shown only when Ne is selected -->
+    @if (Answer == AnswerState.Ne)
     {
-        <textarea class="item-note @(Item.NoteRequired && Answer == AnswerState.Ne && string.IsNullOrWhiteSpace(_noteText) ? "item-note-required" : "")"
+        <textarea class="item-note @(Item.NoteRequired && string.IsNullOrWhiteSpace(_noteText) ? "item-note-required" : "")"
                   placeholder="@(Item.NoteRequired ? "Напомена (обавезно)…" : "Напомена…")"
                   rows="2"
                   @bind="_noteText"
@@ -74,6 +75,19 @@
     private async Task ToggleAnswer(AnswerState clicked)
     {
         var newAnswer = Answer == clicked ? AnswerState.Unanswered : clicked;
+
+        // Kada se skine Ne — očisti severity i napomenu
+        if (Answer == AnswerState.Ne && newAnswer != AnswerState.Ne)
+        {
+            if (CurrentSeverity != CheckSeverity.None)
+                await OnSeverityChanged.InvokeAsync(CheckSeverity.None);
+            if (!string.IsNullOrWhiteSpace(_noteText))
+            {
+                _noteText = "";
+                await OnNoteChanged.InvokeAsync("");
+            }
+        }
+
         await OnAnswerChanged.InvokeAsync(newAnswer);
     }
 
