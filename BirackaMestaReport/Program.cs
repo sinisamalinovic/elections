@@ -13,9 +13,12 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddMudServices();
 
-// EF Core + SQLite
+// EF Core + SQLite — koristi ContentRootPath da bi radilo i na Azure
+var dbFolder = Path.Combine(builder.Environment.ContentRootPath, "data");
+Directory.CreateDirectory(dbFolder);
+var dbPath = Path.Combine(dbFolder, "posmatraci.db");
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite($"Data Source={dbPath}"));
 
 // App services
 builder.Services.AddScoped<ReportService>();
@@ -43,6 +46,15 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
 }
 
+// Global exception handler — uvek vraća JSON čak i u production
+app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
+{
+    var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+    ctx.Response.StatusCode = 500;
+    ctx.Response.ContentType = "application/json";
+    await ctx.Response.WriteAsJsonAsync(new { error = ex?.Message ?? "Unknown error", type = ex?.GetType().Name });
+}));
+
 app.UseCors();
 app.UseStaticFiles();
 app.UseRouting();
@@ -65,15 +77,23 @@ app.Use(async (context, next) =>
 });
 
 // API endpoints
-app.MapPost("/api/submit", async (SubmitRequest req, ReportService reportService) =>
+app.MapPost("/api/submit", async (SubmitRequest req, ReportService reportService, ILogger<Program> logger) =>
 {
     if (string.IsNullOrWhiteSpace(req.Email))
         return Results.BadRequest("Email je obavezan.");
     if (req.BmState == null && req.BmIzlaznost == null)
         return Results.BadRequest("BmState ili BmIzlaznost moraju biti prisutni.");
 
-    await reportService.SaveSubmissionAsync(req.Email, req.BmState, req.BmIzlaznost);
-    return Results.Ok(new { message = "Primljeno." });
+    try
+    {
+        await reportService.SaveSubmissionAsync(req.Email, req.BmState, req.BmIzlaznost);
+        return Results.Ok(new { message = "Primljeno." });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Greška pri čuvanju submisije za {Email}", req.Email);
+        return Results.Problem(detail: ex.Message, title: "Greška pri čuvanju", statusCode: 500);
+    }
 });
 
 app.MapPost("/api/upload-json", async (HttpRequest request, ReportService reportService) =>
@@ -98,6 +118,36 @@ app.MapPost("/api/upload-json", async (HttpRequest request, ReportService report
 
     await reportService.SaveSubmissionAsync(req.Email, req.BmState, req.BmIzlaznost);
     return Results.Ok(new { message = "Fajl učitan." });
+});
+
+// Health check — proverava DB putanju i konekciju + test write
+app.MapGet("/api/health", async (IWebHostEnvironment env, IDbContextFactory<AppDbContext> dbFactory) =>
+{
+    var dbFolder = Path.Combine(env.ContentRootPath, "data");
+    var dbPath = Path.Combine(dbFolder, "posmatraci.db");
+
+    string? dbWriteError = null;
+    int rowCount = 0;
+    try
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        rowCount = await db.Submissions.CountAsync();
+    }
+    catch (Exception ex)
+    {
+        dbWriteError = ex.Message;
+    }
+
+    return Results.Ok(new
+    {
+        status = dbWriteError == null ? "ok" : "db-error",
+        contentRoot = env.ContentRootPath,
+        dbPath = dbPath,
+        dbExists = File.Exists(dbPath),
+        dataFolderExists = Directory.Exists(dbFolder),
+        rowCount = rowCount,
+        dbError = dbWriteError
+    });
 });
 
 app.MapRazorPages();

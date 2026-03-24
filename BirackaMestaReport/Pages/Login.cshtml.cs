@@ -10,11 +10,15 @@ namespace BirackaMestaReport.Pages
     {
         private readonly IConfiguration _config;
         public bool Error { get; private set; }
+        public string BuildTime { get; private set; } = "";
 
         public LoginModel(IConfiguration config) => _config = config;
 
         public IActionResult OnGet(string? logout)
         {
+            // Build timestamp — automatski se menja pri svakom deployu
+            var buildTime = System.IO.File.GetLastWriteTimeUtc(GetType().Assembly.Location);
+            BuildTime = buildTime.ToString("yyyy-MM-dd HH:mm") + " UTC";
             if (logout == "1")
             {
                 HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

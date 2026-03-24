@@ -84,7 +84,7 @@ namespace BirackaMestaReport.Services
                 BjName = bmState?.BjName ?? "",
                 Email = email,
                 ReceivedAt = DateTime.UtcNow,
-                BmStateJson = bmState != null ? JsonSerializer.Serialize(bmState) : null,
+                BmStateJson = bmState != null ? JsonSerializer.Serialize(bmState) : "",
                 BmIzlaznostJson = bmIzlaznost != null ? JsonSerializer.Serialize(bmIzlaznost) : null
             });
             await db.SaveChangesAsync();

@@ -220,11 +220,16 @@
             };
             var response = await Http.PostAsJsonAsync($"{_serverUrl.TrimEnd('/')}/api/submit", req);
             if (response.IsSuccessStatusCode)
+            {
                 Snackbar.Add("✓ Излазност послата на сервер.", MudBlazor.Severity.Success);
+            }
             else
-                Snackbar.Add("Сервер није примио податке.", MudBlazor.Severity.Warning);
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Грешка {(int)response.StatusCode}: {body}", MudBlazor.Severity.Error);
+            }
         }
-        catch
+        catch(Exception ex)
         {
             Snackbar.Add("Сервер недоступан.", MudBlazor.Severity.Error);
         }
