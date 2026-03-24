@@ -68,19 +68,23 @@ namespace BirackaMestaReport.Services
             }).ToList();
         }
 
-        public async Task SaveSubmissionAsync(string email, BmState bmState, BmIzlaznost? bmIzlaznost)
+        public async Task SaveSubmissionAsync(string email, BmState? bmState, BmIzlaznost? bmIzlaznost)
         {
+            var bmId = bmState?.BmId ?? bmIzlaznost?.BmId ?? "";
+            var bmShortId = bmState?.BmShortId ?? bmIzlaznost?.BmShortId ?? 0;
+            var bmDisplayName = bmState?.BmDisplayName ?? bmIzlaznost?.BmDisplayName ?? "";
+
             await using var db = await _dbFactory.CreateDbContextAsync();
             db.Submissions.Add(new BmSubmission
             {
-                BmId = bmState.BmId,
-                BmShortId = bmState.BmShortId,
-                BmDisplayName = bmState.BmDisplayName,
-                OpstineName = bmState.OpstineName,
-                BjName = bmState.BjName,
+                BmId = bmId,
+                BmShortId = bmShortId,
+                BmDisplayName = bmDisplayName,
+                OpstineName = bmState?.OpstineName ?? "",
+                BjName = bmState?.BjName ?? "",
                 Email = email,
                 ReceivedAt = DateTime.UtcNow,
-                BmStateJson = JsonSerializer.Serialize(bmState),
+                BmStateJson = bmState != null ? JsonSerializer.Serialize(bmState) : null,
                 BmIzlaznostJson = bmIzlaznost != null ? JsonSerializer.Serialize(bmIzlaznost) : null
             });
             await db.SaveChangesAsync();

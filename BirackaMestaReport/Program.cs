@@ -67,8 +67,10 @@ app.Use(async (context, next) =>
 // API endpoints
 app.MapPost("/api/submit", async (SubmitRequest req, ReportService reportService) =>
 {
-    if (req.BmState == null || string.IsNullOrWhiteSpace(req.Email))
-        return Results.BadRequest("Email i BmState su obavezni.");
+    if (string.IsNullOrWhiteSpace(req.Email))
+        return Results.BadRequest("Email je obavezan.");
+    if (req.BmState == null && req.BmIzlaznost == null)
+        return Results.BadRequest("BmState ili BmIzlaznost moraju biti prisutni.");
 
     await reportService.SaveSubmissionAsync(req.Email, req.BmState, req.BmIzlaznost);
     return Results.Ok(new { message = "Primljeno." });

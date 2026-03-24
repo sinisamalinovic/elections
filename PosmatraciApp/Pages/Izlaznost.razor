@@ -4,6 +4,7 @@
 @inject IzlaznostService IzlaznostService
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
+@inject HttpClient Http
 
 <PageTitle>Излазност — @(_data?.BmDisplayName ?? "")</PageTitle>
 
@@ -130,8 +131,9 @@
     private BmIzlaznost? _data;
     private int? _ukupnoInput;
     private int? _izlaznostInput;
+    private string _serverUrl = "";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (!AuthService.IsAuthenticated)
         {
@@ -148,6 +150,13 @@
 
         _data = IzlaznostService.GetOrCreate(bm);
         _ukupnoInput = _data.UkupnoBiraca;
+
+        try
+        {
+            var config = await Http.GetFromJsonAsync<System.Text.Json.JsonElement>("data/config.json");
+            _serverUrl = config.GetProperty("serverUrl").GetString() ?? "";
+        }
+        catch { }
     }
 
     private async Task SaveUkupno()
@@ -165,5 +174,21 @@
         Snackbar.Add($"Излазност {_izlaznostInput} пријављена.", MudBlazor.Severity.Success);
         _izlaznostInput = null;
         StateHasChanged();
+        _ = SendToServerAsync();
+    }
+
+    private async Task SendToServerAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_serverUrl) || _data == null) return;
+        try
+        {
+            var req = new SubmitRequest
+            {
+                Email = AuthService.CurrentSession!.Email,
+                BmIzlaznost = _data
+            };
+            await Http.PostAsJsonAsync($"{_serverUrl.TrimEnd('/')}/api/submit", req);
+        }
+        catch { }
     }
 }
