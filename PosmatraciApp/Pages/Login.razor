@@ -58,9 +58,11 @@
 
     protected override void OnInitialized()
     {
-        _buildTime = typeof(Program).Assembly
+        var ver = typeof(Program).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "";
+        // .NET SDK dodaje +gitcommithash — uzimamo samo deo pre '+'
+        _buildTime = ver.Split('+')[0];
 
         if (AuthService.IsAuthenticated)
         {
