@@ -1,7 +1,7 @@
 @page "/login"
 @inject AuthService AuthService
 @inject NavigationManager Nav
-@inject HttpClient Http
+@using System.Reflection
 
 <PageTitle>Пријава - Посматрач</PageTitle>
 
@@ -56,14 +56,11 @@
     private bool _loading;
     private string _buildTime = "";
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        try
-        {
-            var info = await Http.GetFromJsonAsync<VersionInfo>("data/version.json");
-            _buildTime = info?.BuildTime ?? "";
-        }
-        catch { /* tiho ako fajl ne postoji */ }
+        _buildTime = typeof(Program).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion ?? "";
 
         if (AuthService.IsAuthenticated)
         {
@@ -93,10 +90,5 @@
     private async Task OnKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter") await DoLogin();
-    }
-
-    private class VersionInfo
-    {
-        public string BuildTime { get; set; } = "";
     }
 }
