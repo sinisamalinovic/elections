@@ -62,7 +62,7 @@
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "";
         // .NET SDK dodaje +gitcommithash — uzimamo samo deo pre '+'
-        _buildTime = ver.Split('+')[0];
+        _buildTime = "v1.0"; //ver.Split('+')[0];
 
         if (AuthService.IsAuthenticated)
         {
