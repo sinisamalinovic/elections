@@ -90,6 +90,46 @@ namespace BirackaMestaReport.Services
             await db.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Vraća sve submisije koje imaju BmIzlaznostJson, hronološki (najnovije prvo).
+        /// Opcionalni search filtrira po BmDisplayName ili BmShortId.
+        /// </summary>
+        public async Task<List<BmSubmission>> GetAllIzlaznostSubmissionsAsync(string? search = null)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync();
+            var query = db.Submissions
+                .Where(s => s.BmIzlaznostJson != null && s.BmIzlaznostJson != "")
+                .OrderByDescending(s => s.ReceivedAt);
+
+            var list = await query.ToListAsync();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                list = list.Where(x =>
+                    x.BmDisplayName.ToLower().Contains(s) ||
+                    x.BmShortId.ToString().Contains(s) ||
+                    x.Email.ToLower().Contains(s)
+                ).ToList();
+            }
+
+            return list;
+        }
+
+        /// <summary>
+        /// Briše jednu submisiju po Id.
+        /// </summary>
+        public async Task DeleteSubmissionAsync(int id)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync();
+            var sub = await db.Submissions.FindAsync(id);
+            if (sub != null)
+            {
+                db.Submissions.Remove(sub);
+                await db.SaveChangesAsync();
+            }
+        }
+
         public async Task<List<string>> GetOpstinaListAsync()
         {
             await using var db = await _dbFactory.CreateDbContextAsync();

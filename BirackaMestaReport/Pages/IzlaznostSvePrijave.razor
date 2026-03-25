@@ -1,0 +1,204 @@
+@page "/izlaznost-prijave"
+@inject ReportService ReportService
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>Све пријаве излазности</PageTitle>
+
+<div style="padding:16px;">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+        <MudText Typo="Typo.h5" Style="font-weight:700;">Све пријаве излазности</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_search" Placeholder="Претрага по БМ, броју или посматрачу…"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Variant="Variant.Outlined" Dense="true" Immediate="true"
+                      Style="min-width:280px;"
+                      @bind-Value:after="ApplySearch" />
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Освежава се: @_lastRefresh.ToLocalTime().ToString("HH:mm:ss")
+        </MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <div style="display:flex;justify-content:center;padding:48px;">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-bottom:8px;display:block;">
+            @_filtered.Count пријава
+        </MudText>
+
+        <MudTable Items="@_filtered" Dense="true" Hover="true" Striped="true" Style="font-size:13px;">
+            <HeaderContent>
+                <MudTh>БМ</MudTh>
+                <MudTh>Назив</MudTh>
+                <MudTh>Посматрач</MudTh>
+                <MudTh>Примљено</MudTh>
+                <MudTh>Укупно</MudTh>
+                <MudTh>Уноса</MudTh>
+                <MudTh>Задња вредност</MudTh>
+                <MudTh>%</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                @{
+                    var iz = TryDeserialize(context.BmIzlaznostJson);
+                    var last = iz?.Unosi.LastOrDefault();
+                    var pct = last != null ? iz!.PostotakIzlaznosti(last.BrojGlasaca) : null;
+                }
+                <MudTd Style="font-weight:600;">@context.BmShortId</MudTd>
+                <MudTd><MudText Typo="Typo.body2">@context.BmDisplayName</MudText></MudTd>
+                <MudTd><MudText Typo="Typo.caption">@context.Email</MudText></MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.caption">
+                        @context.ReceivedAt.ToLocalTime().ToString("dd.MM. HH:mm")
+                    </MudText>
+                </MudTd>
+                <MudTd>@(iz?.UkupnoBiraca?.ToString() ?? "—")</MudTd>
+                <MudTd>@(iz?.Unosi.Count ?? 0)</MudTd>
+                <MudTd>@(last?.BrojGlasaca.ToString() ?? "—")</MudTd>
+                <MudTd>
+                    @if (pct.HasValue)
+                    {
+                        <MudText Style="@($"font-weight:700;color:{GetPctColor(pct.Value)}")">
+                            @pct.Value%
+                        </MudText>
+                    }
+                    else { <span>—</span> }
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => ConfirmDelete(context))"
+                                   Title="Обриши ову пријаву" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</div>
+
+<!-- Confirm Delete Dialog -->
+<MudDialog @bind-Visible="_deleteDialogOpen">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Потврди брисање</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_deleteTarget != null)
+        {
+            var iz = TryDeserialize(_deleteTarget.BmIzlaznostJson);
+            var last = iz?.Unosi.LastOrDefault();
+            <MudText>
+                Да ли сигурно желите да обришете пријаву за
+                <strong>@_deleteTarget.BmShortId. @_deleteTarget.BmDisplayName</strong>?
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-top:8px;display:block;">
+                Посматрач: @_deleteTarget.Email<br />
+                Примљено: @_deleteTarget.ReceivedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")<br />
+                Задња вредност: @(last?.BrojGlasaca.ToString() ?? "—")
+            </MudText>
+            <MudAlert Severity="MudBlazor.Severity.Warning" Style="margin-top:12px;">
+                Брисање ће утицати на приказ у табели Излазност.
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _deleteDialogOpen = false)">Откажи</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error"
+                   OnClick="ExecuteDelete" Disabled="_deleting">
+            @(_deleting ? "Бришем…" : "Обриши")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<BirackaMestaReport.Data.BmSubmission> _all = new();
+    private List<BirackaMestaReport.Data.BmSubmission> _filtered = new();
+    private string _search = "";
+    private bool _loading = true;
+    private DateTime _lastRefresh = DateTime.UtcNow;
+    private Timer? _timer;
+
+    private bool _deleteDialogOpen;
+    private bool _deleting;
+    private BirackaMestaReport.Data.BmSubmission? _deleteTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _timer = new Timer(async _ =>
+        {
+            await LoadAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+    }
+
+    private async Task LoadAsync()
+    {
+        _all = await ReportService.GetAllIzlaznostSubmissionsAsync();
+        ApplySearch();
+        _lastRefresh = DateTime.UtcNow;
+        _loading = false;
+    }
+
+    private void ApplySearch()
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            _filtered = _all.ToList();
+            return;
+        }
+        var s = _search.Trim().ToLower();
+        _filtered = _all.Where(x =>
+            x.BmDisplayName.ToLower().Contains(s) ||
+            x.BmShortId.ToString().Contains(s) ||
+            x.Email.ToLower().Contains(s)
+        ).ToList();
+    }
+
+    private void ConfirmDelete(BirackaMestaReport.Data.BmSubmission sub)
+    {
+        _deleteTarget = sub;
+        _deleteDialogOpen = true;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (_deleteTarget == null) return;
+        _deleting = true;
+        try
+        {
+            await ReportService.DeleteSubmissionAsync(_deleteTarget.Id);
+            Snackbar.Add($"Пријава за {_deleteTarget.BmDisplayName} је обрисана.", MudBlazor.Severity.Success);
+            _deleteDialogOpen = false;
+            _deleteTarget = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Грешка при брисању: {ex.Message}", MudBlazor.Severity.Error);
+        }
+        finally
+        {
+            _deleting = false;
+        }
+    }
+
+    private static PosmatraciApp.Shared.Models.BmIzlaznost? TryDeserialize(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return System.Text.Json.JsonSerializer.Deserialize<PosmatraciApp.Shared.Models.BmIzlaznost>(json); }
+        catch { return null; }
+    }
+
+    private static string GetPctColor(double pct) => pct switch
+    {
+        > 50 => "#2e7d32",
+        > 20 => "#e65100",
+        _ => "#c62828"
+    };
+
+    public void Dispose() => _timer?.Dispose();
+}

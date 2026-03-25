@@ -79,7 +79,9 @@
         {
             @foreach (var bm in _selectedBj.BiracaMesta)
             {
-                <MudSelectItem T="BirackoMesto" Value="@bm">@bm.ShortId. @bm.Name — @bm.Address</MudSelectItem>
+                <MudSelectItem T="BirackoMesto" Value="@bm">
+                    <MudText Typo="Typo.caption">@bm.ShortId. @bm.Name — @bm.Address</MudText>
+                </MudSelectItem>
             }
         }
     </MudSelect>

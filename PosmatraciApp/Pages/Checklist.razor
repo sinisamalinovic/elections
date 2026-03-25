@@ -3,12 +3,10 @@
 @inject ChecklistService ChecklistService
 @inject LocationService LocationService
 @inject IzlaznostService IzlaznostService
-@inject QrEncoderService QrEncoder
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 
 <PageTitle>Чек-листа — @(_state?.BmDisplayName ?? "")</PageTitle>
 
@@ -39,13 +37,9 @@
                      OnClick="@(() => { _drawerOpen = false; Nav.NavigateTo($"/izlaznost/{BmId}"); })">
             Излазност
         </MudListItem>
-        <MudListItem T="string" Icon="@Icons.Material.Filled.QrCode2"
-                     OnClick="@(() => { _drawerOpen = false; ShowQrDialog(); })">
-            Извоз / QR
-        </MudListItem>
-        <MudListItem T="string" Icon="@Icons.Material.Filled.FileDownload"
-                     OnClick="@(() => { _drawerOpen = false; _ = ExportJson(); })">
-            Сачувај JSON
+        <MudListItem T="string" Icon="@Icons.Material.Filled.Share"
+                     OnClick="@(() => { _drawerOpen = false; _ = ExportAndShare(); })">
+            Извоз / Подели
         </MudListItem>
         <MudListItem T="string" Icon="@Icons.Material.Filled.AddLocation"
                      OnClick="@(() => { _drawerOpen = false; AddBm(); })">
@@ -121,62 +115,12 @@
     </MudExpansionPanels>
 </div>
 
-<!-- QR / Export Dialog -->
-<MudDialog Visible="_qrDialogOpen" VisibleChanged="@((v) => _qrDialogOpen = v)" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Извоз — @_state.BmDisplayName</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (_validationWarnings.Count > 0)
-        {
-            <MudAlert Severity="MudBlazor.Severity.Warning" Style="margin-bottom:12px;">
-                <MudText Typo="Typo.subtitle2">Недостају напомене за:</MudText>
-                <ul style="margin:4px 0 0 16px;">
-                    @foreach (var w in _validationWarnings)
-                    {
-                        <li><MudText Typo="Typo.caption">@w</MudText></li>
-                    }
-                </ul>
-            </MudAlert>
-        }
-
-        @if (!string.IsNullOrEmpty(_qrBase64))
-        {
-            <div style="text-align:center;padding:8px 0;">
-                <img src="data:image/png;base64,@_qrBase64"
-                     style="max-width:100%;border:1px solid #eee;" alt="QR код" />
-            </div>
-
-            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="text-align:center;display:block;margin-bottom:4px;">
-                @_state.BmDisplayName — @DateTime.Now.ToString("dd.MM.yyyy HH:mm")
-            </MudText>
-            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="text-align:center;display:block;">
-                Одговорено: @_state.AnsweredCount/@_state.TotalItems | Не: @_state.NeCount
-            </MudText>
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="@(() => _qrDialogOpen = false)">Затвори</MudButton>
-        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Download"
-                   OnClick="DownloadQr">QR слика</MudButton>
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
-                   StartIcon="@Icons.Material.Filled.FileDownload"
-                   OnClick="ExportJsonFromDialog">JSON</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Share"
-                   OnClick="ShareQr">Подели</MudButton>
-    </DialogActions>
-</MudDialog>
 
 @code {
     [Parameter] public string BmId { get; set; } = "";
 
     private BmState? _state;
     private bool _drawerOpen;
-    private bool _qrDialogOpen;
-    private string _qrBase64 = "";
-    private List<string> _validationWarnings = new();
     private bool _sending;
     private string _serverUrl = "";
 
@@ -294,22 +238,12 @@
     }
 
     /// <summary>
-    /// Otvara QR/share dialog (poziva se iz drawer-a).
+    /// Kreira JSON i odmah deli (Web Share API) ili preuzima kao fallback.
     /// </summary>
-    private void ShowQrDialog()
+    private async Task ExportAndShare()
     {
         if (_state == null) return;
-        BuildValidationWarnings();
-        var payload = QrEncoder.EncodeToBase64Url(_state, AuthService.CurrentSession!.EmailHash);
-        _qrBase64 = QrEncoder.GenerateQrPngBase64(payload);
-        _ = ChecklistService.SaveAllAsync();
-        _qrDialogOpen = true;
-        StateHasChanged();
-    }
-
-    private async Task ExportJson()
-    {
-        if (_state == null) return;
+        await ChecklistService.SaveAllAsync();
         var izlaznost = IzlaznostService.Get(BmId);
         var req = new SubmitRequest
         {
@@ -319,40 +253,7 @@
         };
         var json = System.Text.Json.JsonSerializer.Serialize(req, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
         var filename = $"bm{_state.BmShortId}-{DateTime.Now:yyyyMMdd-HHmm}.json";
-        await JS.InvokeVoidAsync("downloadJson", json, filename);
-    }
-
-    private async Task ExportJsonFromDialog()
-    {
-        _qrDialogOpen = false;
-        await ExportJson();
-    }
-
-    private void BuildValidationWarnings()
-    {
-        _validationWarnings = new List<string>();
-        foreach (var sect in ChecklistService.Sections)
-            foreach (var item in sect.Items)
-                if (item.NoteRequired
-                    && item.Id < _state!.Answers.Length
-                    && _state.Answers[item.Id] == AnswerState.Ne
-                    && (!_state.Notes.TryGetValue(item.Id, out var n) || string.IsNullOrWhiteSpace(n)))
-                    _validationWarnings.Add(item.Text.Length > 60 ? item.Text[..60] + "…" : item.Text);
-    }
-
-    private async Task ShareQr()
-    {
-        if (string.IsNullOrEmpty(_qrBase64)) return;
-        var shared = await JS.InvokeAsync<bool>("shareQrCode", _qrBase64, _state!.BmDisplayName);
-        if (!shared)
-            Snackbar.Add("Дељење није подржано на овом уређају. Преузмите слику.", MudBlazor.Severity.Info);
-    }
-
-    private async Task DownloadQr()
-    {
-        if (string.IsNullOrEmpty(_qrBase64)) return;
-        var filename = $"qr-{_state!.BmShortId}-{DateTime.Now:yyyyMMdd-HHmm}.png";
-        await JS.InvokeVoidAsync("downloadQrCode", _qrBase64, filename);
+        await JS.InvokeVoidAsync("shareJson", json, filename, _state.BmDisplayName);
     }
 
     private Color GetOverallProgressColor()

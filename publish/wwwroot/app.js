@@ -17,6 +17,16 @@ window.shareQrCode = async (base64png, bmName) => {
     return false;
 };
 
+// Download JSON file
+window.downloadJson = (json, filename) => {
+    const blob = new Blob([json], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename || 'posmatraci-export.json';
+    link.click();
+    URL.revokeObjectURL(link.href);
+};
+
 // Download QR as PNG fallback
 window.downloadQrCode = (base64png, filename) => {
     const link = document.createElement('a');

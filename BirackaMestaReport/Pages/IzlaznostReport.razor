@@ -34,9 +34,19 @@
             ? _rows
             : _rows.Where(r => r.OpstineName == _filterOpstina).ToList();
 
-        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-bottom:8px;display:block;">
-            @rows.Count БМ пријављено | @rows.Count(r => r.BmIzlaznost?.Unosi.Count > 0) са излазношћу
-        </MudText>
+        <div style="display:flex;align-items:center;gap:24px;margin-bottom:12px;flex-wrap:wrap;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @rows.Count БМ пријављено | @rows.Count(r => r.BmIzlaznost?.Unosi.Count > 0) са излазношћу
+            </MudText>
+            @if (_avgPct.HasValue)
+            {
+                <MudChip T="string" Color="@(_avgPct > 50 ? Color.Success : _avgPct > 20 ? Color.Warning : Color.Error)"
+                         Variant="Variant.Filled" Size="Size.Medium"
+                         Icon="@Icons.Material.Filled.BarChart">
+                    Просек: @_avgPct.Value%
+                </MudChip>
+            }
+        </div>
 
         <MudTable Items="@rows" Dense="true" Hover="true" Striped="true"
                   SortLabel="Сортирај" Style="font-size:13px;">
@@ -97,6 +107,7 @@
     private bool _loading = true;
     private DateTime _lastRefresh = DateTime.UtcNow;
     private Timer? _timer;
+    private double? _avgPct;
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,6 +123,8 @@
     {
         _rows = await ReportService.GetLatestPerBmAsync();
         _opstine = _rows.Select(r => r.OpstineName).Distinct().OrderBy(n => n).ToList();
+        var pcts = _rows.Select(r => LastPostotak(r)).Where(p => p.HasValue).Select(p => p!.Value).ToList();
+        _avgPct = pcts.Count > 0 ? Math.Round(pcts.Average(), 1) : null;
         _lastRefresh = DateTime.UtcNow;
         _loading = false;
     }

@@ -11,7 +11,7 @@
             <div style="text-align:center;margin-bottom:24px;">
                 <MudIcon Icon="@Icons.Material.Filled.HowToVote" Color="Color.Primary" Style="font-size:3rem;" />
                 <MudText Typo="Typo.h5" Style="margin-top:8px;font-weight:600;">Посматрач изборa</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Чек-листа за биrачко место</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">28-rj-posmatracka-misija</MudText>
             @if (!string.IsNullOrEmpty(_buildTime))
             {
                 <MudText Typo="Typo.caption" Style="color:#bbb;margin-top:4px;">v@_buildTime</MudText>
@@ -62,7 +62,7 @@
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "";
         // .NET SDK dodaje +gitcommithash — uzimamo samo deo pre '+'
-        _buildTime = "v1.0"; //ver.Split('+')[0];
+        _buildTime = ver.Split('+')[0];
 
         if (AuthService.IsAuthenticated)
         {
